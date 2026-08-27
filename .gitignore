@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / SO
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Variáveis de ambiente / segredos (nunca versionar)
+.env
+.env.*
+!.env.example
+
+# Temporários
+*.tmp
+*.temp
+.cache/

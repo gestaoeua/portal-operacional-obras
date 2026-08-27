@@ -1,0 +1,24 @@
+{
+  "name": "painel-mapa-progresso",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Painel de acompanhamento de progresso por sala (somente leitura), publicado no GitHub Pages e alimentado por uma Google Sheet via Apps Script.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

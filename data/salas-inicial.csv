@@ -1,0 +1,49 @@
+MARK,Nome,Servico,Status,Observacao,PosicaoX,PosicaoY,Identificada,UltimaAtualizacao
+1-000,Lobby / Waiting,Segunda mão,pendente,Falta aplicar a segunda mão.,59,92,Sim,2026-08-24
+1-002,Reception,Touch-up,touch_up,Retoques finais.,61,80,Sim,2026-08-24
+1-003,Check-in / PCC,Segunda mão,pendente,Falta aplicar a segunda mão.,39,79,Sim,2026-08-24
+1-004,Waiting,Segunda mão,pendente,Falta aplicar a segunda mão.,47,65,Sim,2026-08-24
+1-006,Corridor,Segunda mão,pendente,Corredor principal.,27,66,Sim,2026-08-24
+1-007,Patient Toilet Anteroom,Concluído,finalizado,P3 até o chão concluída.,36,65,Sim,2026-08-24
+1-007A,Patient Toilet,Concluído,finalizado,Serviço finalizado.,38,65,Sim,2026-08-24
+1-008,Blood Draw,Touch-up,touch_up,P3 até o chão executada; fazer retoques.,32,65,Sim,2026-08-24
+1-009,Team Room,Touch-up,touch_up,Retoques finais.,17,78,Sim,2026-08-24
+1-010,Check-in / PCC,Segunda mão,pendente,Falta aplicar a segunda mão.,36,78,Sim,2026-08-24
+1-011,WK Comp Case Mgr,Touch-up,touch_up,Retoques finais.,9,72,Sim,2026-08-24
+1-012,Provider,Touch-up,touch_up,Retoques finais.,18,71,Sim,2026-08-24
+1-013,POC Testing,Touch-up,touch_up,Retoques finais.,32,58,Sim,2026-08-24
+1-014,Practice Manager,Concluído,finalizado,Serviço finalizado.,17,60,Sim,2026-08-24
+1-015,Meds,2ª mão + touch-up,em_andamento,Segunda mão em uma parede e retoques.,9,60,Sim,2026-08-24
+1-016,Exam Room,Segunda mão,pendente,Aplicar a segunda mão.,9,45,Sim,2026-08-24
+1-017,Exam Room,2ª mão + touch-up,em_andamento,Segunda mão em uma parede e retoques.,20,45,Sim,2026-08-24
+1-018,Audiology,Touch-up,touch_up,Retoques finais.,35,50,Sim,2026-08-24
+1-019,Treatment Room,Touch-up,touch_up,Retoques finais.,35,40,Sim,2026-08-24
+1-020,Treatment Room,Touch-up,touch_up,Retoques finais.,11,34,Sim,2026-08-24
+1-022,HR Service Office,Touch-up,touch_up,Retoques finais.,13,23,Sim,2026-08-24
+1-023,HR Service Hotelling Office,Touch-up,touch_up,Retoques finais.,20,23,Sim,2026-08-24
+1-024,HR Service Office,Touch-up,touch_up,Retoques finais.,27,23,Sim,2026-08-24
+1-025,TA Advisor,Touch-up,touch_up,Retoques finais.,34,23,Sim,2026-08-24
+1-026,TA Advisor,Touch-up,touch_up,Retoques finais.,40,23,Sim,2026-08-24
+1-027,TA Advisor,Segunda mão,pendente,Segunda mão em uma parede.,41,35,Sim,2026-08-24
+1-028,TA Advisor,Touch-up,touch_up,Retoques finais.,47,35,Sim,2026-08-24
+1-029,Data,Touch-up,touch_up,Retoques finais.,47,23,Sim,2026-08-24
+1-030,TA Advisor,Touch-up,touch_up,Retoques finais.,48,35,Sim,2026-08-24
+1-040,Lactation,Touch-up,touch_up,Retoques finais.,62,34,Sim,2026-08-24
+1-042,TA Advisor,Touch-up,touch_up,Retoques finais.,69,35,Sim,2026-08-24
+1-043,TA Manager Office,Pintar portas,pendente,Portas pendentes de pintura.,73,23,Sim,2026-08-24
+1-044,TA Advisor,Segunda mão,pendente,Segunda mão em duas paredes.,76,35,Sim,2026-08-24
+1-045,HRIS Mgr,Touch-up,touch_up,Retoques finais.,82,23,Sim,2026-08-24
+1-046,TA Advisor,Touch-up,touch_up,Retoques finais.,83,35,Sim,2026-08-24
+1-048,Open Workstations,Touch-up,touch_up,Touch-up na P5.,94,47,Sim,2026-08-24
+1-049,HR Business Partner Office,Segunda mão,pendente,Rolar a segunda mão.,81,45,Sim,2026-08-24
+1-050,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,81,52,Sim,2026-08-24
+1-051,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,80,60,Sim,2026-08-24
+1-052,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,81,67,Sim,2026-08-24
+1-053,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,76,80,Sim,2026-08-24
+1-054,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,84,80,Sim,2026-08-24
+1-055,HR Business Partner Office,Touch-up,touch_up,Retoques finais.,92,80,Sim,2026-08-24
+1-056,Print / Copy,Touch-up,touch_up,Retoques finais.,72,68,Sim,2026-08-24
+1-057A,Conference Room,Touch-up,touch_up,Registro da sala 1-057; MARK corrigido.,70,80,Sim,2026-08-24
+1-057B,Conference Room,Touch-up,touch_up,Registro da sala 1-057; MARK corrigido.,67,56,Sim,2026-08-24
+1-058,Storage,2ª mão + touch-up,em_andamento,Segunda mão em uma parede e retoques.,64,68,Sim,2026-08-24
+1-060,Corridor,Concluído,finalizado,Serviço finalizado.,52,71,Sim,2026-08-24

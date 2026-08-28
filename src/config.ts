@@ -11,8 +11,9 @@
 // funciona para retornar os dados da planilha configurada pelo dono do
 // projeto — nenhum visitante consegue alterar nada por aqui.
 export const APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzFvwETpQUWkNA7hKy0ljxsdLvqxB5eZC_2uEMXjRoGBBFUaeaPcg_IZ0ibCKFWPVSNZQ/exec';
+  'https://script.google.com/macros/s/AKfycbwcgH3vyBcIUPxLz5KWSF5m_F6WjwPJLATfJcMNjEWdfAyBPdty28SogjwFYkV5lz6a/exec';
 
 // Intervalo (em milissegundos) que o navegador espera pela resposta da API
 // antes de mostrar a mensagem de erro amigável.
 export const FETCH_TIMEOUT_MS = 15000;
+

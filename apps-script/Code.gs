@@ -21,6 +21,11 @@
 
 // Nome da aba que contém os dados das salas.
 var SHEET_NAME = 'Salas';
+var SPREADSHEET_ID = '1AZpQKHWns1z4-m7e30vd1CowM4bnqxHuo_aCCLvMizY';
+
+function getSpreadsheet_() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
 
 // Cabeçalhos esperados na primeira linha da aba (nessa ordem).
 var EXPECTED_HEADERS = [
@@ -114,7 +119,7 @@ function exit_(user, id, action, status) {
   if (VALID_STATUSES.indexOf(status) === -1 || status === 'nao_cadastrada') throw new Error('Status inválido.');
   var lock = LockService.getScriptLock(); lock.waitLock(5000);
   try {
-  var sh = SpreadsheetApp.getActive().getSheetByName('Registros'), data = sh.getDataRange().getValues(), h = data[0];
+  var sh = getSpreadsheet_().getSheetByName('Registros'), data = sh.getDataRange().getValues(), h = data[0];
   for (var i=1;i<data.length;i++) if(data[i][h.indexOf('id')]===id && data[i][h.indexOf('userId')]===user.Usuario) {
     var end = new Date().toISOString();
     sh.getRange(i+1,h.indexOf('endedAt')+1).setValue(end); sh.getRange(i+1,h.indexOf('action')+1).setValue(action); sh.getRange(i+1,h.indexOf('finalStatus')+1).setValue(status);
@@ -126,12 +131,12 @@ function exit_(user, id, action, status) {
 var VALID_ACTIONS=['preparacao','primeira_mao','segunda_mao','touch_up','portas','limpeza','inspecao'];
 function updateRoomStatus_(mark,status){var sh=getSheet_(),v=sh.getDataRange().getValues(),h=v[0],mi=h.indexOf('MARK'),si=h.indexOf('Status'),ui=h.indexOf('UltimaAtualizacao');for(var i=1;i<v.length;i++)if(String(v[i][mi]).trim()===String(mark).trim()){sh.getRange(i+1,si+1).setValue(status);if(ui>=0)sh.getRange(i+1,ui+1).setValue(new Date());return}}
 function rows_(name) {
-  var sh=SpreadsheetApp.getActive().getSheetByName(name); if(!sh||sh.getLastRow()<2)return[];
+  var sh=getSpreadsheet_().getSheetByName(name); if(!sh||sh.getLastRow()<2)return[];
   var v=sh.getDataRange().getDisplayValues(),h=v.shift(); return v.map(function(r){var o={};h.forEach(function(k,i){o[k]=r[i]});return o});
 }
-function append_(name,obj){var sh=SpreadsheetApp.getActive().getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];sh.appendRow(h.map(function(k){return obj[k]||''}))}
+function append_(name,obj){var sh=getSpreadsheet_().getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];sh.appendRow(h.map(function(k){return obj[k]||''}))}
 function setupSistema() {
-  var ss=SpreadsheetApp.getActive(), specs={
+  var ss=getSpreadsheet_(), specs={
     Usuarios:['Usuario','SenhaHash','Nome','Perfil','Ativo'],
     Registros:['id','userId','userName','roomMark','roomName','startedAt','endedAt','action','finalStatus'],
     Projetos:['ProjetoID','ClienteID','Projeto','PlantaURL','Ativo'],
@@ -150,7 +155,7 @@ function hash_(value) {
 function safeEqual_(a,b){a=(a||'').toString();b=(b||'').toString();if(a.length!==b.length)return false;var d=0;for(var i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 
 function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet_();
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     throw new Error('Aba "' + SHEET_NAME + '" não encontrada na planilha.');
@@ -278,3 +283,4 @@ function jsonResponse_(obj) {
     ContentService.MimeType.JSON
   );
 }
+

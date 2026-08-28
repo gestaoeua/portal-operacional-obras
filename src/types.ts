@@ -64,3 +64,25 @@ export interface ApiResponse {
   atualizadoEm?: string;
   erro?: string;
 }
+
+export type UserRole = 'executor' | 'gestor' | 'diretor';
+export type WorkAction = 'preparacao' | 'primeira_mao' | 'segunda_mao' | 'touch_up' | 'portas' | 'limpeza' | 'inspecao';
+
+export interface UserSession {
+  token: string;
+  userId: string;
+  name: string;
+  role: UserRole;
+}
+
+export interface WorkVisit {
+  id: string;
+  userId: string;
+  userName: string;
+  roomMark: string;
+  roomName: string;
+  startedAt: string;
+  endedAt?: string;
+  action?: WorkAction;
+  finalStatus?: Status;
+}

@@ -234,6 +234,20 @@ body {
   font-size: 15px;
   padding: 3px 9px;
 }
+.position-toggle {
+  border: 1px solid #476b92;
+  background: #eef4fa;
+  color: #244a72;
+  border-radius: 6px;
+  padding: 7px 11px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.position-toggle.on {
+  background: #244a72;
+  color: #fff;
+}
 .map-viewport {
   height: 628px;
   overflow: auto;
@@ -252,6 +266,104 @@ body {
   width: 100%;
   display: block;
   filter: contrast(1.02) saturate(0.55);
+}
+.map-stage.positioning {
+  cursor: crosshair;
+}
+.position-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to right, #174a7d55 0 1px, transparent 1px 5%),
+    repeating-linear-gradient(to bottom, #174a7d55 0 1px, transparent 1px 5%);
+  box-shadow: inset 0 0 0 2px #174a7d99;
+}
+.grid-columns span,
+.grid-rows span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 16px;
+  text-align: center;
+  border-radius: 3px;
+  background: #123b61d9;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 14px;
+  box-shadow: 0 1px 3px #0004;
+}
+.grid-columns span {
+  top: 9px;
+}
+.grid-rows span {
+  left: 10px;
+}
+.draft-marker {
+  position: absolute;
+  z-index: 8;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #1769aa;
+  box-shadow: 0 0 0 4px #1769aa88, 0 3px 12px #0005;
+  pointer-events: none;
+}
+.draft-marker b {
+  position: absolute;
+  left: 28px;
+  top: 2px;
+  color: #fff;
+  background: #123b61;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.position-help {
+  position: absolute;
+  z-index: 9;
+  top: 12px;
+  left: 12px;
+  background: #fff;
+  color: var(--navy);
+  padding: 11px 13px;
+  border: 1px solid #9eb9d2;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px #10243b33;
+  font-size: 10px;
+}
+.position-help > strong,
+.position-help > span {
+  display: block;
+}
+.position-help > span {
+  color: var(--muted);
+  margin-top: 3px;
+}
+.position-help div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+}
+.position-help div b {
+  background: #e9f1f8;
+  padding: 5px 7px;
+  border-radius: 5px;
+}
+.position-help button {
+  border: 0;
+  border-radius: 5px;
+  background: #1769aa;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
 }
 .marker {
   position: absolute;
@@ -552,3 +664,10 @@ dt {
     height: 420px;
   }
 }
+
+/* Portal operacional */
+header{height:64px;background:#14243b;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px}header span{font-size:12px}header button{margin-left:12px}main>aside{background:#fff2bf;text-align:center;padding:7px;font-size:11px;font-weight:bold}
+.login-page{min-height:100vh;display:grid;place-items:center;background:#e9eef4}.login-card{width:min(390px,92vw);background:#fff;padding:36px;border-radius:18px;box-shadow:0 20px 60px #14243b22}.brand-mark{width:54px;height:54px;display:grid;place-items:center;background:#14243b;color:#fff;border-radius:14px;font-weight:900}.login-card p{font-size:10px;letter-spacing:.13em;font-weight:bold;color:#57728f}.login-card label{display:block;font-size:11px;font-weight:bold;margin:16px 0}.login-card input{display:block;width:100%;padding:14px;border:1px solid #ccd5df;border-radius:9px;margin-top:6px}.login-card button,.drawer button{width:100%;padding:15px;border:0;border-radius:9px;background:#1769aa;color:#fff;font-weight:900}.login-card small{display:block;background:#f0f4f8;padding:10px;margin-top:14px}.error{color:#b22;font-size:11px}
+.field,.dash{max-width:1100px;margin:auto;padding:26px 18px 100px}.field h1,.dash h1{font-size:30px}.search{width:100%;padding:15px;border:1px solid #ccd5df;border-radius:10px;font-size:16px}.rooms{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px}.rooms button{display:flex;gap:10px;align-items:center;text-align:left;padding:15px;border:1px solid #d9e0e7;border-radius:10px;background:#fff}.rooms button.sel,.tap button.sel{outline:3px solid #1769aa}.rooms span b{display:block}.drawer{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:15px 24px;box-shadow:0 -6px 25px #0002;display:flex;align-items:center;justify-content:center;gap:20px;z-index:20}.drawer button{width:260px}.active{text-align:center;background:#14243b;color:#fff;padding:26px;border-radius:18px}.active h1{font-size:48px;margin:8px}.active b{display:inline-block;background:#ffffff20;padding:10px 18px;border-radius:99px}.tap{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.tap button{min-height:78px;border:0;border-radius:12px;font-weight:900}.tap i{display:block;font-size:24px}.tap .done{background:#bfe8ca}.tap .progress{background:#ffd8ad}.tap .touchup{background:#fff0a8}.tap .pending{background:#f4baba}.finish{width:100%;margin-top:24px;padding:18px;border:0;border-radius:12px;background:#1769aa;color:#fff;font-weight:900}.finish:disabled{opacity:.35}
+.dash>p{font-size:10px;letter-spacing:.14em;font-weight:bold}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpis article{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:18px}.kpis span{display:block;font-size:11px;color:#687386}.kpis b{font-size:32px}.workers article,.history article{display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:12px;background:#fff;border-bottom:1px solid #e5e9ee;padding:14px}.history i{font-style:normal;padding:5px;border-radius:5px}.bars{background:#fff;padding:20px;border-radius:12px}.bars p{display:grid;grid-template-columns:120px 1fr 30px;gap:10px}.bars i{height:12px;background:#edf0f3;border-radius:9px;overflow:hidden}.bars i b{display:block;height:100%}.bars .done{background:#24a148}.bars .progress{background:#f18b21}.bars .touchup{background:#f2c94c}.bars .pending{background:#df3d3d}
+@media(max-width:700px){header{padding:0 12px}.rooms{grid-template-columns:1fr}.tap{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:1fr 1fr}.drawer{display:block}.drawer button{width:100%;margin-top:10px}.workers article,.history article{grid-template-columns:1fr 1fr}.field h1,.dash h1{font-size:24px}}

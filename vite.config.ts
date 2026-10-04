@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -26,5 +27,15 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      // Único acréscimo deste build: a prévia pública aditiva em
+      // /demo-os-cronograma/ — publicada lado a lado com o app real, sem
+      // alterá-lo. `index.html` (app real) continua o input principal,
+      // sem mudança nenhuma de comportamento ou de saída.
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        demo: resolve(__dirname, 'demo-os-cronograma/index.html'),
+      },
+    },
   },
 });

@@ -1,0 +1,97 @@
+/* Estilo PRÓPRIO e autocontido desta demo pública — extraído (não
+   redesenhado) do CSS do componente já revisado (os mesmos valores,
+   seletores e regras). Isolado deliberadamente para esta publicação nunca
+   depender de `src/App.css` do app real (ver auditoria de publicação): o
+   app real não ganha nenhuma linha nova, e esta demo não herda nada dele. */
+:root {
+  --navy: #14243b;
+  --muted: #687386;
+  --line: #dfe4ea;
+  --bg: #f2f4f7;
+  --done: #24a148;
+  --progress: #f18b21;
+  --touchup: #f2c94c;
+  --pending: #df3d3d;
+  --unregistered: #9aa6b6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--navy);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.os-painel{max-width:1100px;margin:28px auto 0;padding:0 18px}
+.os-painel h2{font-size:18px;margin:24px 0 10px}
+.os-demo-aviso{background:#fff2bf;text-align:center;padding:7px;font-size:11px;font-weight:bold;border-radius:8px;margin-bottom:12px}
+.fonte-status{background:#fff;border:1px solid var(--line);border-left:4px solid var(--unregistered);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.fonte-status-indisponivel{border-left-color:var(--pending)}
+.fonte-status-desatualizado{border-left-color:var(--touchup)}
+.fonte-status-parcial{border-left-color:var(--progress)}
+.os-contadores{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.os-contadores article{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.os-contadores span{display:block;font-size:11px;color:var(--muted)}
+.os-contadores b{font-size:26px}
+.os-contador-alerta{border-color:var(--pending)}
+.os-teste-nota{font-size:11px;color:var(--muted);margin:8px 0}
+.os-lista{display:grid;gap:8px;margin-top:10px}
+.os-linha{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer}
+.os-linha.sel{outline:3px solid #1769aa}
+.os-pill{font-style:normal;color:#fff;border-radius:99px;padding:5px 9px;font-size:9px;font-weight:800;text-transform:uppercase;justify-self:end}
+.os-pill-nao_iniciada{background:var(--unregistered)}
+.os-pill-em_andamento{background:var(--progress)}
+.os-pill-concluida_informada{background:var(--done)}
+.os-pill-status_nao_mapeado{background:var(--pending)}
+.os-avisos-parciais{background:#fff4e5;border:1px solid var(--progress);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px}
+.os-avisos-parciais ul{margin:6px 0 0;padding-left:18px}
+.os-sem-projeto-aviso{font-size:11px;color:var(--muted);background:#f3f5f8;border-radius:8px;padding:8px 12px;margin:8px 0}
+.os-aviso-inline{color:#8a5a00;font-style:italic}
+
+/* Régua diária — eixo comum de dias com barras proporcionais. */
+.regua-vazia{font-size:12px;color:var(--muted);margin-top:10px}
+.regua-wrap{margin-top:10px}
+.regua-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--muted);margin-bottom:8px}
+.regua-legenda span{display:flex;align-items:center;gap:5px}
+.regua-amostra{display:inline-block;width:14px;height:10px;border-radius:3px}
+.regua-amostra-planejada{background:#2f6fb3}
+.regua-amostra-real{background:#1d6f3c}
+.regua-amostra-projetado{background:repeating-linear-gradient(45deg,#2f6fb3,#2f6fb3 3px,#aac8e6 3px,#aac8e6 6px)}
+.regua-amostra-aberta{background:#2f6fb3;opacity:.45;border:1px dashed #244a72}
+.regua-amostra-erro{background:#c0392b}
+.regua-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.regua-grade{display:flex;flex-direction:column}
+.regua-eixo{display:grid;align-items:end;border-bottom:2px solid var(--line);background:#f7f9fb;position:sticky;top:0;z-index:2}
+.regua-eixo-rotulo{position:sticky;left:0;background:#f7f9fb;font-size:9px;letter-spacing:.08em;color:#8a95a5;font-weight:800;padding:6px 10px;z-index:3}
+.regua-eixo-dia{font-size:9px;color:var(--muted);text-align:center;padding:4px 2px;border-left:1px solid #eef0f3}
+.regua-eixo-dia small{display:block;color:#aab3bf}
+.regua-linha-grade{display:grid;align-items:center;text-align:left;background:none;border:none;border-top:1px solid #eef0f3;padding:0;cursor:pointer;width:100%}
+.regua-linha-grade.sel{background:#eef6fc}
+.regua-id-sticky{position:sticky;left:0;background:#fff;padding:10px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line);z-index:1}
+.regua-linha-grade.sel .regua-id-sticky{background:#eef6fc}
+.regua-id-sticky small{font-size:10px;color:var(--muted)}
+.regua-trilha{position:relative;height:50px;display:block}
+.regua-barra{position:absolute;top:6px;height:14px;border-radius:5px;background:#2f6fb3;color:#fff;font-size:8px;display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap}
+.regua-barra-real{background:#1d6f3c}
+.regua-barra-projetada{background:repeating-linear-gradient(45deg,#2f6fb3,#2f6fb3 4px,#5a90c4 4px,#5a90c4 8px)}
+.regua-barra-aberta{opacity:.7;border:1px dashed #1a3a5c;border-radius:5px 10px 10px 5px}
+.regua-barra-erro{background:#c0392b!important;border:1px solid #7b1e14;opacity:1}
+.fila-pendente{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.fila-pendente h3{font-size:12px;margin:0 0 8px}
+.fila-pendente h3 span{float:right;background:#e8edf2;border-radius:20px;padding:2px 8px}
+.fila-pendente-item{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:7px 2px;border-top:1px solid #edf0f3}
+.fila-pendente-indisponivel{font-size:12px;color:var(--muted);padding:7px 2px}
+.os-detalhe{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+.os-detalhe-head{display:flex;align-items:center;gap:10px}
+.os-detalhe-head span{font-size:9px;letter-spacing:.12em;color:#8a95a5;font-weight:800}
+.os-detalhe dl div{margin-bottom:14px}
+.os-detalhe dt{font-size:9px;letter-spacing:.12em;color:#8a95a5;font-weight:800}
+.os-detalhe dd{margin:4px 0 0;font-size:12px;line-height:1.45}
+.etapa-aviso{font-size:10px;color:#92a0b3;border-top:1px solid var(--line);padding-top:10px}
+
+/* Mobile: a grade da régua rola horizontalmente; a coluna de identificação
+   da OS (.regua-id-sticky / .regua-eixo-rotulo) fica fixa via `sticky` para
+   continuar legível durante a rolagem. */
+@media(max-width:700px){.os-contadores{grid-template-columns:1fr 1fr}.os-linha{grid-template-columns:1fr}.regua-legenda{font-size:10px;gap:10px}}

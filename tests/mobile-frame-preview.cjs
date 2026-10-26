@@ -1,0 +1,2 @@
+// Local responsive review: a real 390 CSS-pixel browsing context, fixtures only.
+require('node:http').createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<!doctype html><title>RSF mobile fixture review</title><style>body{margin:0}iframe{width:390px;height:2400px;border:0;display:block}</style><iframe title="RSF mobile preview at 390 CSS pixels" src="http://127.0.0.1:8791/"></iframe>');}).listen(8793,'127.0.0.1',()=>console.log('Mobile fixture frame http://127.0.0.1:8793'));

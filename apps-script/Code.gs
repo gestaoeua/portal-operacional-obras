@@ -1,140 +1,207 @@
-/**
- * Apps Script do Painel de Mapa de Progresso
- * ============================================================================
- * Este script é o único "backend" do painel. Ele expõe UM único endpoint
- * HTTP GET que lê a aba "Salas" da planilha e devolve os dados em JSON.
- *
- * IMPORTANTE — segurança:
- *  - Este arquivo NÃO contém nenhuma credencial, token ou senha.
- *  - Só existe a função doGet(). Não há doPost/doPut/doPatch/doDelete que
- *    escrevam na planilha — ou seja, é fisicamente impossível alterar dados
- *    através deste endpoint. A função doPost() abaixo existe apenas para
- *    devolver uma mensagem de erro amigável, caso alguém tente enviar dados;
- *    ela NÃO grava nada na planilha.
- *  - A edição dos dados é feita só por quem tem acesso de edição à própria
- *    planilha no Google Sheets.
- *
- * Como instalar: veja o passo a passo completo no README.md do projeto
- * ("Publicar o Apps Script").
- * ============================================================================
+/** RSF API: public GET is metadata only. Data requires an authenticated POST.
+ * Legacy password hashes are retained for compatibility, NOT production approval.
+ * See docs/backend-security.md before deployment.
  */
-
-// Nome da aba que contém os dados das salas.
 var SHEET_NAME = 'Salas';
 var SPREADSHEET_ID = '1AZpQKHWns1z4-m7e30vd1CowM4bnqxHuo_aCCLvMizY';
-
-function getSpreadsheet_() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
+var EXPECTED_HEADERS = ['MARK','Nome','Servico','Status','Observacao','PosicaoX','PosicaoY','Identificada','UltimaAtualizacao'];
+var SCHEMAS = {
+  Salas: EXPECTED_HEADERS,
+  Usuarios: ['Usuario','SenhaHash','Nome','Perfil','Ativo'],
+  Registros: ['id','userId','userName','roomMark','roomName','startedAt','endedAt','action','finalStatus']
+};
+var VALID_ROLES = ['executor','gestor','diretor'];
+var VALID_ACTIONS = ['preparacao','primeira_mao','segunda_mao','touch_up','portas','limpeza','inspecao'];
+var UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function getSpreadsheet_() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
+function fail_(message, code) { var e = new Error(message); e.publicMessage = message; e.publicCode = code; throw e; }
+function requireText_(value, max, message) {
+  if (typeof value !== 'string' || !value.trim() || value.length > max || /[\u0000-\u001f]/.test(value)) fail_(message);
+  return value;
 }
-
-// Cabeçalhos esperados na primeira linha da aba (nessa ordem).
-var EXPECTED_HEADERS = [
-  'MARK',
-  'Nome',
-  'Servico',
-  'Status',
-  'Observacao',
-  'PosicaoX',
-  'PosicaoY',
-  'Identificada',
-  'UltimaAtualizacao',
-];
-
-/**
- * Único ponto de entrada HTTP deste projeto. Responde a requisições GET
- * com a lista de salas em JSON. Não recebe nem processa parâmetros que
- * alterem a planilha.
- */
-function doGet(e) {
-  try {
-    var sheet = getSheet_();
-    var result = readSalas_(sheet);
-
-    return jsonResponse_({
-      ok: true,
-      salas: result.salas,
-      atualizadoEm: result.atualizadoEm,
-      totalSalas: result.salas.length,
-    });
-  } catch (err) {
-    return jsonResponse_({
-      ok: false,
-      erro: 'Não foi possível ler os dados da planilha: ' + err.message,
-    });
-  }
-}
-
-/**
- * Não implementamos escrita. Isto existe apenas para responder de forma
- * clara caso alguém tente fazer POST neste endpoint — nada é gravado.
- */
+function requireToken_(value) { if (typeof value !== 'string' || !UUID_PATTERN.test(value)) fail_('Sessão inválida. Entre novamente.', 'SESSION_EXPIRED'); return value; }
+function doGet() { return jsonResponse_({ok:true, service:'RSF Portal', version:2, authenticationRequired:true}); }
 function doPost(e) {
   try {
-    var p = JSON.parse((e.parameter && e.parameter.payload) || '{}');
-    if (p.action === 'login') return jsonResponse_({ ok: true, session: login_(p.username, p.password) });
+    var payload = e && e.parameter && e.parameter.payload;
+    if (typeof payload !== 'string' || payload.length > 8192) fail_('Requisição inválida.');
+    var p;
+    try { p = JSON.parse(payload); } catch (_) { fail_('Requisição inválida.'); }
+    if (!p || typeof p !== 'object' || Array.isArray(p)) fail_('Requisição inválida.');
+    // ADITIVO (rodada OS operacional): novas ações só de ledger de OS,
+    // isoladas por projeto — nunca tocam login_/session_/hash_/safeEqual_.
+    var OS_OPERACIONAL_ACOES = ['listOsProjects','listOsMembers','listOsOperacional','detailOsOperacional','createOsOperacional','assignOsOperacional','advanceOsOperacional','reopenOsOperacional'];
+    if (['login','logout','listRooms','listVisits','listWorkOrders','enter','exit'].concat(OS_OPERACIONAL_ACOES).indexOf(p.action) < 0) fail_('Operação não reconhecida.');
+    if (p.action === 'login') return jsonResponse_({ok:true, session:login_(p.username,p.password)});
+    // Logout remains possible even after the user is disabled or their role changes.
+    if (p.action === 'logout') { CacheService.getScriptCache().remove('token_' + requireToken_(p.token)); return jsonResponse_({ok:true}); }
     var user = session_(p.token);
-    if (p.action === 'enter') return jsonResponse_({ ok: true, visit: enter_(user, p.roomMark) });
-    if (p.action === 'exit') return jsonResponse_({ ok: true, visit: exit_(user, p.visitId, p.workAction, p.finalStatus) });
+    if (p.action === 'listOsProjects') return jsonResponse_({ok:true,projects:projetosOS_(user)});
+    if (p.action === 'listOsMembers') return jsonResponse_({ok:true,members:membrosOS_(user,p.projetoId)});
+    if (p.action === 'listWorkOrders') {
+      if (user.Perfil !== 'gestor' && user.Perfil !== 'diretor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+      return jsonResponse_({ok:true,workOrders:readWorkOrders_()});
+    }
+    if (p.action === 'listRooms') {
+      var rooms = readSalas_(getSheet_());
+      return jsonResponse_({ok:true,salas:rooms.salas,atualizadoEm:rooms.atualizadoEm,totalSalas:rooms.salas.length});
+    }
     if (p.action === 'listVisits') {
       var visits = rows_('Registros');
-      if (user.Perfil === 'executor') visits = visits.filter(function(v){ return v.userId === user.Usuario; });
-      return jsonResponse_({ ok: true, visits: visits });
+      if (user.Perfil === 'executor') visits = visits.filter(function(v) { return v.userId === user.Usuario; });
+      return jsonResponse_({ok:true,visits:visits});
     }
-    throw new Error('Operação não reconhecida.');
-  } catch (err) { return jsonResponse_({ ok: false, erro: err.message }); }
+    // Ledger de OS operacional: cada função abaixo já exige grant explícito
+    // de projeto (OS_Acessos) para ESTE usuário, mesmo gestor/diretor — ver
+    // docs/backend-security.md, seção "OS operacional (ledger)".
+    if (p.action === 'listOsOperacional') return jsonResponse_({ok:true,workOrders:listarOsOperacional_(user,p.projetoId)});
+    if (p.action === 'detailOsOperacional') return jsonResponse_({ok:true,workOrder:detalheOsOperacional_(user,p.projetoId,p.osId)});
+    // As quatro ações abaixo MUTAM o ledger: cada uma reavalia o próprio
+    // ator (conta ativa/papel) e o grant de projeto DENTRO do lock, nunca
+    // confiando apenas neste `user` anterior — o gate pré-lock é repetido dentro dele.
+    if (p.action === 'createOsOperacional') return jsonResponse_({ok:true,workOrder:criarOsOperacional_(user,p)});
+    if (p.action === 'assignOsOperacional') return jsonResponse_({ok:true,workOrder:atribuirResponsavelOS_(user,p)});
+    if (p.action === 'advanceOsOperacional') return jsonResponse_({ok:true,workOrder:avancarStatusOS_(user,p)});
+    if (p.action === 'reopenOsOperacional') return jsonResponse_({ok:true,workOrder:reabrirOsOperacional_(user,p)});
+    if (user.Perfil !== 'executor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+    if (p.action === 'enter') return jsonResponse_({ok:true,visit:enter_(user,p.roomMark)});
+    return jsonResponse_({ok:true,visit:exit_(user,p.visitId,p.workAction,p.finalStatus)});
+  } catch (err) {
+    // Never disclose internal exception messages, sheet IDs or service diagnostics.
+    return jsonResponse_({ok:false,code:err.publicCode || 'REQUEST_FAILED',erro:err.publicMessage || 'Não foi possível concluir a operação. Tente novamente ou contate o responsável.'});
+  }
 }
-
-function login_(username, password) {
-  username = (username || '').toString().trim().toLowerCase();
-  var attempts = CacheService.getScriptCache();
-  var attemptKey = 'attempt_' + username;
-  var count = Number(attempts.get(attemptKey) || 0);
-  if (count >= 8) throw new Error('Muitas tentativas. Aguarde 10 minutos.');
-  var users = rows_('Usuarios');
-  var u = users.filter(function(x){ return x.Usuario.toLowerCase() === username && safeEqual_(x.SenhaHash, hash_(password)) && x.Ativo === 'Sim'; })[0];
-  if (!u) { attempts.put(attemptKey, String(count + 1), 600); throw new Error('Nome ou senha incorretos.'); }
-  attempts.remove(attemptKey);
-  var token = Utilities.getUuid();
-  CacheService.getScriptCache().put('token_' + token, JSON.stringify(u), 21600);
-  return { token: token, userId: u.Usuario, name: u.Nome, role: u.Perfil };
+/** Read-only OS source, independent of the operational room/visit workbook. */
+var OS_HEADERS = ['OS','Endereço','Cidade','Status','Escopo','Proteções / Não remover','Dependências / Observações','Evidências','Última atualização'];
+function readWorkOrders_() {
+  var id = PropertiesService.getScriptProperties().getProperty('OS_SPREADSHEET_ID');
+  if (typeof id !== 'string' || !id.trim()) fail_('Fonte de ordens de serviço não configurada.', 'OS_NOT_CONFIGURED');
+  var sheet = SpreadsheetApp.openById(id.trim()).getSheetByName('OS');
+  if (!sheet || sheet.getLastRow() < 1 || sheet.getLastColumn() !== OS_HEADERS.length) fail_('Estrutura da fonte de ordens de serviço inválida.', 'OS_SCHEMA_INVALID');
+  // Display values preserve source IDs such as leading zeros and formatted text.
+  var values = sheet.getDataRange().getDisplayValues(), headers = values[0];
+  if (headers.length !== OS_HEADERS.length || OS_HEADERS.some(function(h,i) { return headers[i] !== h; })) fail_('Estrutura da fonte de ordens de serviço inválida.', 'OS_SCHEMA_INVALID');
+  var seen = Object.create(null), keys = ['id','address','city','status','scope','protections','dependencies','evidenceNotes','updatedAt'];
+  return values.slice(1).filter(function(row) { return row.some(function(v) { return String(v).trim() !== ''; }); }).map(function(row) {
+    var sourceId = row[0], canonicalId = sourceId.trim();
+    if (!canonicalId) fail_('Ordem de serviço sem identificador.', 'OS_INVALID_ID');
+    if (seen[canonicalId]) fail_('Identificador de ordem de serviço duplicado.', 'OS_DUPLICATE_ID');
+    seen[canonicalId] = true;
+    var result = {}; keys.forEach(function(k,i) { result[k] = row[i]; }); return result;
+  });
+}
+function login_(username,password) {
+  username = requireText_(username,128,'Nome ou senha incorretos.').trim().toLowerCase();
+  requireText_(password,1024,'Nome ou senha incorretos.');
+  var cache = CacheService.getScriptCache(), key = 'attempt_' + hash_(username);
+  var lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try {
+    var count = Number(cache.get(key) || 0);
+    if (count >= 8) fail_('Muitas tentativas. Aguarde 10 minutos.');
+    var matches = rows_('Usuarios').filter(function(x) { return x.Usuario.trim().toLowerCase() === username; });
+    var u = matches.length === 1 ? matches[0] : null;
+    var digest = hash_(password);
+    if (!u || u.Ativo !== 'Sim' || VALID_ROLES.indexOf(u.Perfil) < 0 || !safeEqual_(u.SenhaHash,digest)) {
+      cache.put(key,String(count+1),600); fail_('Nome ou senha incorretos.');
+    }
+    cache.remove(key);
+    var token = Utilities.getUuid();
+    cache.put('token_' + token,JSON.stringify({userId:u.Usuario,expiresAt:Date.now()+21600000}),21600);
+    return {token:token,userId:u.Usuario,name:u.Nome,role:u.Perfil};
+  } finally { lock.releaseLock(); }
 }
 function session_(token) {
-  var raw = CacheService.getScriptCache().get('token_' + token);
-  if (!raw) throw new Error('Sessão expirada. Entre novamente.');
-  return JSON.parse(raw);
+  var cache = CacheService.getScriptCache(), key = 'token_' + requireToken_(token), raw = cache.get(key), saved;
+  try { saved = raw && JSON.parse(raw); } catch (_) { saved = null; }
+  if (!saved || typeof saved.userId !== 'string' || !Number.isFinite(saved.expiresAt) || saved.expiresAt <= Date.now()) {
+    cache.remove(key); fail_('Sessão expirada. Entre novamente.', 'SESSION_EXPIRED');
+  }
+  var users = rows_('Usuarios').filter(function(x) { return x.Usuario === saved.userId; });
+  if (users.length !== 1 || users[0].Ativo !== 'Sim' || VALID_ROLES.indexOf(users[0].Perfil) < 0) {
+    cache.remove(key); fail_('Sessão inválida. Entre novamente.', 'SESSION_EXPIRED');
+  }
+  return users[0];
 }
-function enter_(user, mark) {
-  var lock = LockService.getScriptLock(); lock.waitLock(5000);
-  try {
-  var open = rows_('Registros').filter(function(x){ return x.userId === user.Usuario && !x.endedAt; })[0];
-  if (open) throw new Error('Você já está trabalhando em ' + open.roomMark + '.');
-  var room = readSalas_(getSheet_()).salas.filter(function(x){ return x.MARK === mark; })[0];
-  if (!room) throw new Error('Local não encontrado.');
-  var visit = { id: Utilities.getUuid(), userId:user.Usuario, userName:user.Nome, roomMark:mark, roomName:room.Nome, startedAt:new Date().toISOString(), endedAt:'', action:'', finalStatus:'' };
-  append_('Registros', visit); return visit;
-  } finally { lock.releaseLock(); }
+/** Exact schema required: missing, duplicate, reordered or unexpected columns fail closed. */
+function table_(name, display) {
+  var sh = getSpreadsheet_().getSheetByName(name), expected = SCHEMAS[name];
+  if (!sh || !expected || sh.getLastRow() < 1 || sh.getLastColumn() !== expected.length) fail_('Estrutura da planilha inválida. Contate o responsável.');
+  var range = sh.getDataRange(), values = display ? range.getDisplayValues() : range.getValues(), headers = values[0];
+  if (headers.length !== expected.length || expected.some(function(h,i) { return headers[i] !== h; })) fail_('Estrutura da planilha inválida. Contate o responsável.');
+  return {sheet:sh,headers:headers,values:values};
 }
-function exit_(user, id, action, status) {
-  if (VALID_ACTIONS.indexOf(action) === -1) throw new Error('Atividade inválida.');
-  if (VALID_STATUSES.indexOf(status) === -1 || status === 'nao_cadastrada') throw new Error('Status inválido.');
-  var lock = LockService.getScriptLock(); lock.waitLock(5000);
-  try {
-  var sh = getSpreadsheet_().getSheetByName('Registros'), data = sh.getDataRange().getValues(), h = data[0];
-  for (var i=1;i<data.length;i++) if(data[i][h.indexOf('id')]===id && data[i][h.indexOf('userId')]===user.Usuario) {
-    var end = new Date().toISOString();
-    sh.getRange(i+1,h.indexOf('endedAt')+1).setValue(end); sh.getRange(i+1,h.indexOf('action')+1).setValue(action); sh.getRange(i+1,h.indexOf('finalStatus')+1).setValue(status);
-    updateRoomStatus_(data[i][h.indexOf('roomMark')], status);
-    return {id:id,userId:user.Usuario,userName:user.Nome,roomMark:data[i][h.indexOf('roomMark')],roomName:data[i][h.indexOf('roomName')],startedAt:data[i][h.indexOf('startedAt')],endedAt:end,action:action,finalStatus:status};
-  } throw new Error('Registro aberto não encontrado.');
-  } finally { lock.releaseLock(); }
-}
-var VALID_ACTIONS=['preparacao','primeira_mao','segunda_mao','touch_up','portas','limpeza','inspecao'];
-function updateRoomStatus_(mark,status){var sh=getSheet_(),v=sh.getDataRange().getValues(),h=v[0],mi=h.indexOf('MARK'),si=h.indexOf('Status'),ui=h.indexOf('UltimaAtualizacao');for(var i=1;i<v.length;i++)if(String(v[i][mi]).trim()===String(mark).trim()){sh.getRange(i+1,si+1).setValue(status);if(ui>=0)sh.getRange(i+1,ui+1).setValue(new Date());return}}
 function rows_(name) {
-  var sh=getSpreadsheet_().getSheetByName(name); if(!sh||sh.getLastRow()<2)return[];
-  var v=sh.getDataRange().getDisplayValues(),h=v.shift(); return v.map(function(r){var o={};h.forEach(function(k,i){o[k]=r[i]});return o});
+  var t = table_(name,true);
+  return t.values.slice(1).filter(function(r) { return r.some(function(v) { return v !== ''; }); }).map(function(r) {
+    var o = {}; t.headers.forEach(function(h,i) { o[h] = r[i]; }); return o;
+  });
 }
-function append_(name,obj){var sh=getSpreadsheet_().getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];sh.appendRow(h.map(function(k){return obj[k]||''}))}
+function append_(name,obj) {
+  var t = table_(name,false);
+  var row = t.headers.map(function(h) {
+    var value = obj[h] === undefined ? '' : obj[h];
+    // Prevent user-controlled spreadsheet formulas from executing on append.
+    if (typeof value === 'string' && /^[=+@-]/.test(value)) value = "'" + value;
+    return value;
+  });
+  t.sheet.appendRow(row);
+}
+function enter_(user,mark) {
+  mark = requireText_(mark,128,'Local inválido.').trim();
+  var lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try {
+    if (rows_('Registros').some(function(x) { return x.userId === user.Usuario && !x.endedAt; })) fail_('Você já possui um registro aberto.');
+    var rooms = readSalas_(getSheet_()).salas.filter(function(x) { return x.MARK === mark; });
+    if (rooms.length !== 1) fail_('Local não encontrado ou duplicado.');
+    var visit = {id:Utilities.getUuid(),userId:user.Usuario,userName:user.Nome,roomMark:mark,roomName:rooms[0].Nome,startedAt:new Date().toISOString(),endedAt:'',action:'',finalStatus:''};
+    try {
+      append_('Registros',visit);
+      // Commit buffered Sheets changes while the script lock is still held.
+      SpreadsheetApp.flush();
+    } catch (_) {
+      // Append/flush failure can be ambiguous: the row may already exist.
+      fail_('Não foi possível confirmar a entrada. Atualize os registros antes de tentar novamente.', 'WRITE_UNCONFIRMED');
+    }
+    return visit;
+  } finally { lock.releaseLock(); }
+}
+function exit_(user,id,action,status) {
+  if (typeof id !== 'string' || !UUID_PATTERN.test(id)) fail_('Registro inválido.');
+  if (VALID_ACTIONS.indexOf(action) < 0) fail_('Atividade inválida.');
+  if (VALID_STATUSES.indexOf(status) < 0 || status === 'nao_cadastrada') fail_('Status inválido.');
+  var lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try {
+    // Validate both complete schemas and both targets before the first write.
+    var t = table_('Registros',false), rooms = table_(SHEET_NAME,false);
+    var indexes = [];
+    for (var i=1;i<t.values.length;i++) if (t.values[i][0] === id) indexes.push(i);
+    if (indexes.length !== 1) fail_('Registro aberto não encontrado.');
+    var index = indexes[0], row = t.values[index];
+    if (row[1] !== user.Usuario || row[6]) fail_('Registro aberto não encontrado.');
+    var roomIndexes = [];
+    for (var j=1;j<rooms.values.length;j++) if (String(rooms.values[j][0]).trim() === String(row[3]).trim()) roomIndexes.push(j);
+    if (roomIndexes.length !== 1) fail_('Local não encontrado ou duplicado.');
+    var roomIndex = roomIndexes[0], oldStatus = rooms.values[roomIndex][3], oldUpdated = rooms.values[roomIndex][8];
+    var end = new Date().toISOString();
+    // Sheets does not offer a transaction across these ranges. Roll back best-effort;
+    // a storage outage during rollback requires operator reconciliation (see docs).
+    try {
+      rooms.sheet.getRange(roomIndex+1,4).setValue(status);
+      rooms.sheet.getRange(roomIndex+1,9).setValue(new Date());
+      t.sheet.getRange(index+1,7,1,3).setValues([[end,action,status]]);
+      SpreadsheetApp.flush();
+    } catch (err) {
+      try {
+        rooms.sheet.getRange(roomIndex+1,4).setValue(oldStatus);
+        rooms.sheet.getRange(roomIndex+1,9).setValue(oldUpdated);
+        t.sheet.getRange(index+1,7,1,3).setValues([[row[6],row[7],row[8]]]);
+        SpreadsheetApp.flush();
+      } catch (_) { fail_('Falha ao salvar. Contate o responsável para conferir o registro antes de tentar novamente.'); }
+      fail_('Falha ao salvar. Confira o registro antes de tentar novamente.');
+    }
+    return {id:id,userId:user.Usuario,userName:row[2],roomMark:row[3],roomName:row[4],startedAt:row[5],endedAt:end,action:action,finalStatus:status};
+  } finally { lock.releaseLock(); }
+}
 function setupSistema() {
   var ss=getSpreadsheet_(), specs={
     Usuarios:['Usuario','SenhaHash','Nome','Perfil','Ativo'],
@@ -171,25 +238,12 @@ function getSheet_() {
  * planilha, por exemplo).
  */
 function readSalas_(sheet) {
+  var table = table_(SHEET_NAME, false);
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
-  if (lastRow < 2) return [];
-
-  var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var headerIndex = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var h = (headerRow[i] || '').toString().trim();
-    if (h) headerIndex[h] = i;
-  }
-
-  var missing = EXPECTED_HEADERS.filter(function (h) {
-    return !(h in headerIndex);
-  });
-  if (missing.length) {
-    throw new Error(
-      'Colunas ausentes na aba "' + SHEET_NAME + '": ' + missing.join(', ')
-    );
-  }
+  table.headers.forEach(function(h, i) { headerIndex[h] = i; });
+  if (lastRow < 2) return { salas: [], atualizadoEm: '' };
 
   var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var timezone = Session.getScriptTimeZone();
@@ -284,3 +338,341 @@ function jsonResponse_(obj) {
   );
 }
 
+// =============================================================================
+// OS OPERACIONAL (ledger) — PREPARADO NESTA RODADA, NÃO MIGRADO.
+// Nenhuma destas abas (OS_Eventos/OS_Acessos) existe na planilha real ainda.
+// `setupOsOperacional()` abaixo é só o código que as CRIARIA, do mesmo jeito
+// que `setupSistema()` já faz para Usuarios/Registros/Projetos/Clientes —
+// nunca é chamado automaticamente por este arquivo, só manualmente pelo
+// administrador, depois de decidir ONDE essas abas devem viver e aprovar a
+// migração. Nada é escrito numa planilha real por este arquivo sozinho.
+//
+// DESENHO (journal autoritativo, sem projeção separada): cada ação grava
+// EXATAMENTE UMA linha em `OS_Eventos` — nunca uma segunda gravação numa
+// tabela de "estado atual". O estado de uma OS é sempre DERIVADO (a linha de
+// maior Revisao para aquele OsId). Custo aceito: ler todas as linhas daquela
+// OS para derivar o estado — aceitável na escala deste piloto, documentado
+// como limite, nunca escondido.
+//
+// ISOLAMENTO: toda leitura/escrita deste ledger exige grant EXPLÍCITO em
+// `OS_Acessos` (Usuario×ProjetoId) — SEM EXCEÇÃO DE PAPEL, inclusive
+// gestor/diretor. Diferente, por desenho, do adaptador legado
+// `listWorkOrders`/`OS_HEADERS` acima (restrito só por papel, sem isolamento
+// por projeto — risco já aceito e documentado em docs/backend-security.md
+// antes desta rodada). OS legadas daquela aba NUNCA entram neste ledger nem
+// são atribuídas a um projeto por inferência; os dois sistemas são
+// independentes nesta rodada.
+//
+// SEÇÃO CRÍTICA ÚNICA (correção de revisão incremental desta rodada): toda
+// leitura de estado atual, toda regra de transição/campo obrigatório e toda
+// checagem de responsável/grant de uma MUTAÇÃO acontecem DENTRO do mesmo
+// lock que protege a gravação — nunca antes de adquiri-lo. A checagem de
+// IDEMPOTÊNCIA (dedup por RequestId) é a PRIMEIRA coisa feita sob lock,
+// antes de qualquer leitura de estado: repetir um comando já aplicado nunca
+// é avaliado contra um estado que já avançou (o que o rejeitaria
+// incorretamente como transição ilegal). A comparação de replay usa um
+// `ComandoCanonico` persistido (JSON do comando pedido, já incluindo o ator
+// resolvido pela sessão) — nunca um valor gerado pelo servidor como um OsId
+// novo, e nunca uma comparação solta de parâmetros não normalizados.
+// =============================================================================
+
+var OS_EVENTOS_HEADERS = ['RequestId','OsId','ProjetoId','TipoEvento','StatusAnterior','StatusNovo','ResponsavelAnterior','ResponsavelNovo','UsuarioId','PapelUsuario','CriadoEm','Revisao','Origem','OrigemDetalhe','Motivo','Escopo','ComandoCanonico'];
+var OS_ACESSOS_HEADERS = ['ProjetoId','Usuario'];
+var OS_STATUS_ORDEM = ['Recebida','Em conferência','Programada','Em execução','Aguardando validação','Concluída'];
+var OS_ORIGENS_VALIDAS = ['manual','whatsapp_prep'];
+
+// Campos exigidos pelo SERVIDOR antes de aceitar a transição PARA o status
+// indicado — nunca inventados a partir de um valor ausente.
+var OS_CAMPOS_EXIGIDOS_POR_TRANSICAO = {
+  'Em execução': ['responsavelNovo'],
+  'Concluída': ['motivo']
+};
+
+/** Mesma política de schema exato das demais abas, mas distingue "ledger nunca configurado" de "estrutura corrompida". */
+function linhasComSchema_(name, expected) {
+  var sh = getSpreadsheet_().getSheetByName(name);
+  if (!sh) fail_('Fonte de ordens de serviço (ledger) não configurada.', 'OS_LEDGER_NOT_CONFIGURED');
+  if (sh.getLastRow() < 1 || sh.getLastColumn() !== expected.length) fail_('Estrutura do ledger de OS inválida.', 'OS_LEDGER_SCHEMA_INVALID');
+  var values = sh.getDataRange().getDisplayValues(), headers = values[0];
+  if (expected.some(function(h,i) { return headers[i] !== h; })) fail_('Estrutura do ledger de OS inválida.', 'OS_LEDGER_SCHEMA_INVALID');
+  return values.slice(1).filter(function(r) { return r.some(function(v) { return v !== ''; }); }).map(function(r) {
+    var o = {}; expected.forEach(function(h,i) { o[h] = r[i]; }); return o;
+  });
+}
+
+function temAcessoProjeto_(usuario, projetoId) {
+  return linhasComSchema_('OS_Acessos', OS_ACESSOS_HEADERS).some(function(r) { return r.Usuario === usuario && r.ProjetoId === projetoId; });
+}
+
+function projetosOS_(user) {
+  var ids = [];
+  linhasComSchema_('OS_Acessos', OS_ACESSOS_HEADERS).forEach(function(r) {
+    if (r.Usuario === user.Usuario && r.ProjetoId && ids.indexOf(r.ProjetoId) < 0) ids.push(r.ProjetoId);
+  });
+  return ids.map(function(id) { return {id:id,name:id}; });
+}
+
+function membrosOS_(user, projetoId) {
+  projetoId = requireText_(projetoId,128,'Projeto inválido.');
+  if (!temAcessoProjeto_(user.Usuario,projetoId)) fail_('Sem acesso a este projeto.','PROJECT_FORBIDDEN');
+  var grants = linhasComSchema_('OS_Acessos',OS_ACESSOS_HEADERS).filter(function(r) { return r.ProjetoId === projetoId; });
+  return rows_('Usuarios').filter(function(u) {
+    return u.Ativo === 'Sim' && VALID_ROLES.indexOf(u.Perfil) >= 0 && grants.some(function(g) { return g.Usuario === u.Usuario; });
+  }).map(function(u) { return {userId:u.Usuario,name:u.Nome,role:u.Perfil}; });
+}
+
+function eventosOS_(projetoId) {
+  var events = linhasComSchema_('OS_Eventos', OS_EVENTOS_HEADERS).filter(function(e) { return e.ProjetoId === projetoId; });
+  var requests = Object.create(null), groups = Object.create(null);
+  function invalid() { fail_('Histórico de OS inconsistente. Contate o responsável.', 'OS_LEDGER_CORRUPT'); }
+  events.forEach(function(e) {
+    if (!UUID_PATTERN.test(e.RequestId) || !UUID_PATTERN.test(e.OsId) || requests[e.RequestId] ||
+        !/^[1-9][0-9]*$/.test(e.Revisao) || !Number.isSafeInteger(Number(e.Revisao)) ||
+        OS_STATUS_ORDEM.indexOf(e.StatusNovo) < 0 || !e.UsuarioId || !e.Escopo ||
+        !Number.isFinite(Date.parse(e.CriadoEm))) invalid();
+    requests[e.RequestId] = true;
+    (groups[e.OsId] || (groups[e.OsId] = [])).push(e);
+  });
+  Object.keys(groups).forEach(function(id) {
+    var history = groups[id].sort(function(a,b) { return Number(a.Revisao)-Number(b.Revisao); });
+    history.forEach(function(e,i) {
+      if (Number(e.Revisao) !== i+1) invalid();
+      if (!i) {
+        if (e.TipoEvento !== 'criada' || e.StatusNovo !== OS_STATUS_ORDEM[0] || e.StatusAnterior || e.ResponsavelAnterior || e.ResponsavelNovo) invalid();
+        return;
+      }
+      var previous = history[i-1];
+      if (e.StatusAnterior !== previous.StatusNovo || e.ResponsavelAnterior !== previous.ResponsavelNovo || e.Escopo !== previous.Escopo) invalid();
+      if (e.TipoEvento === 'atribuida') {
+        if (e.StatusNovo !== e.StatusAnterior || !e.ResponsavelNovo) invalid();
+      } else if (e.TipoEvento === 'status_alterado') {
+        if (OS_STATUS_ORDEM.indexOf(e.StatusNovo) !== OS_STATUS_ORDEM.indexOf(e.StatusAnterior)+1 || e.ResponsavelNovo !== e.ResponsavelAnterior) invalid();
+      } else if (e.TipoEvento === 'reaberta') {
+        if (e.StatusAnterior !== 'Concluída' || e.StatusNovo === 'Concluída' || !e.Motivo || e.ResponsavelNovo !== e.ResponsavelAnterior) invalid();
+      } else invalid();
+    });
+  });
+  return events;
+}
+
+/** Deriva o estado atual de UMA OsId a partir do evento de maior Revisao. Nunca lê/infere de outra fonte. */
+function estadoAtualOS_(projetoId, osId) {
+  var eventos = eventosOS_(projetoId).filter(function(e) { return e.OsId === osId; });
+  if (!eventos.length) return null;
+  var atual = eventos[0];
+  eventos.forEach(function(e) { if (Number(e.Revisao) > Number(atual.Revisao)) atual = e; });
+  return {
+    osId: osId, projetoId: projetoId, status: atual.StatusNovo, escopo: atual.Escopo,
+    responsavel: atual.ResponsavelNovo, revisao: Number(atual.Revisao), atualizadoEm: atual.CriadoEm,
+    historico: eventos.slice().sort(function(a,b) { return Number(a.Revisao) - Number(b.Revisao); })
+  };
+}
+
+function eventoPorRequestId_(projetoId, requestId) {
+  return eventosOS_(projetoId).filter(function(e) { return e.RequestId === requestId; })[0] || null;
+}
+
+function listarOsOperacional_(user, projetoId) {
+  projetoId = requireText_(projetoId, 128, 'Projeto inválido.');
+  if (!temAcessoProjeto_(user.Usuario, projetoId)) fail_('Sem acesso a este projeto.', 'PROJECT_FORBIDDEN');
+  var ids = [];
+  eventosOS_(projetoId).forEach(function(e) { if (ids.indexOf(e.OsId) < 0) ids.push(e.OsId); });
+  return ids.map(function(id) { return estadoAtualOS_(projetoId, id); });
+}
+
+function detalheOsOperacional_(user, projetoId, osId) {
+  projetoId = requireText_(projetoId, 128, 'Projeto inválido.');
+  osId = requireText_(osId, 128, 'OS inválida.');
+  if (!temAcessoProjeto_(user.Usuario, projetoId)) fail_('Sem acesso a este projeto.', 'PROJECT_FORBIDDEN');
+  var estado = estadoAtualOS_(projetoId, osId);
+  if (!estado) fail_('OS não encontrada.', 'OS_NOT_FOUND');
+  return estado;
+}
+
+function requireRequestId_(value) { if (typeof value !== 'string' || !UUID_PATTERN.test(value)) fail_('Identificador de requisição inválido.'); return value; }
+
+/** String opcional-mas-tipada: ausente/undefined -> '', presente precisa ser string dentro do tamanho — nunca objeto/array/número aceitos e coagidos em silêncio. */
+function requireCanonicalText_(value, max) {
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') fail_('Campo de texto inválido.');
+  if (value.length > max) fail_('Campo de texto excede o tamanho permitido.');
+  return value.trim();
+}
+
+/** Revisão esperada é OBRIGATÓRIA em toda mutação sobre uma OS existente — nunca Number(undefined) nem coerção de string; só inteiro seguro >= 0 aceito. */
+function requireRevisaoEsperada_(value) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) fail_('Revisão esperada inválida ou ausente. Recarregue antes de tentar novamente.', 'REVISION_REQUIRED');
+  return value;
+}
+
+function requireOrigem_(value) {
+  if (value === undefined) return 'manual';
+  if (OS_ORIGENS_VALIDAS.indexOf(value) < 0) fail_('Origem inválida.');
+  return value;
+}
+
+function appendLedger_(name, expected, obj) {
+  var sh = getSpreadsheet_().getSheetByName(name);
+  if (!sh) fail_('Fonte de ordens de serviço (ledger) não configurada.', 'OS_LEDGER_NOT_CONFIGURED');
+  if (sh.getLastColumn() !== expected.length) fail_('Estrutura do ledger de OS inválida.', 'OS_LEDGER_SCHEMA_INVALID');
+  var row = expected.map(function(h) {
+    var value = obj[h] === undefined ? '' : obj[h];
+    if (typeof value === 'string' && /^[=+@-]/.test(value)) value = "'" + value;
+    return value;
+  });
+  sh.appendRow(row);
+}
+
+/**
+ * Executa um comando sobre o ledger inteiramente dentro de UMA seção
+ * crítica: dedup por RequestId é a PRIMEIRA checagem sob lock, antes de
+ * qualquer leitura de estado ou regra de transição. `comando.osId` é
+ * `undefined` para criação (o ID é gerado só depois da dedup, dentro de
+ * `comando.aplicar`) e o OsId informado pelo cliente para as demais ações.
+ * `comando.chaveCanonica()` devolve o comando PEDIDO PELO CLIENTE (nunca um
+ * valor gerado pelo servidor) — persistido como `ComandoCanonico` e
+ * comparado literalmente em um replay, já incluindo o usuário resolvido
+ * pela sessão (nunca um ator/papel vindo do corpo da requisição).
+ * `comando.aplicar(estadoAtual)` faz toda leitura/validação/decisão de
+ * negócio (responsável, grants, transição, campos obrigatórios) e só então
+ * devolve os campos do evento a gravar — tudo isto acontece sob o MESMO
+ * lock que protege a gravação em si.
+ */
+function executarComandoOS_(user, p, comando) {
+  var projetoId = requireText_(p.projetoId, 128, 'Projeto inválido.');
+  var requestId = requireRequestId_(p.requestId);
+  if (!temAcessoProjeto_(user.Usuario, projetoId)) fail_('Sem acesso a este projeto.', 'PROJECT_FORBIDDEN');
+  var lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try {
+    // Re-resolve the existing session after waiting. Never modify auth itself.
+    var currentUser = session_(p.token);
+    user.Usuario = currentUser.Usuario;
+    user.Perfil = currentUser.Perfil;
+    if (!temAcessoProjeto_(user.Usuario, projetoId)) fail_('Sem acesso a este projeto.', 'PROJECT_FORBIDDEN');
+    if (p.action !== 'advanceOsOperacional' && user.Perfil === 'executor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+    var comandoCanonico = JSON.stringify([user.Usuario, comando.chaveCanonica()]);
+    var existente = eventoPorRequestId_(projetoId, requestId);
+    if (existente) {
+      if (existente.ComandoCanonico !== comandoCanonico) fail_('Identificador de requisição já usado para uma operação diferente.', 'REQUEST_ID_CONFLICT');
+      return estadoAtualOS_(projetoId, existente.OsId);
+    }
+    var osId = comando.osId;
+    var estadoAtual = osId ? estadoAtualOS_(projetoId, osId) : null;
+    if (osId && !estadoAtual) fail_('OS não encontrada.', 'OS_NOT_FOUND');
+    var decisao = comando.aplicar(estadoAtual); // valida tudo sob lock; lança fail_ se inválido
+    var revisaoAtual = estadoAtual ? estadoAtual.revisao : 0;
+    var linha = {
+      RequestId: requestId, OsId: decisao.osId, ProjetoId: projetoId, TipoEvento: decisao.tipoEvento,
+      StatusAnterior: decisao.statusAnterior || '', StatusNovo: decisao.statusNovo || '',
+      ResponsavelAnterior: decisao.responsavelAnterior || '', ResponsavelNovo: decisao.responsavelNovo || '',
+      UsuarioId: user.Usuario, PapelUsuario: user.Perfil, CriadoEm: new Date().toISOString(),
+      Revisao: revisaoAtual + 1, Origem: decisao.origem || 'manual', OrigemDetalhe: decisao.origemDetalhe || '',
+      Motivo: decisao.motivo || '', Escopo: decisao.escopo || '', ComandoCanonico: comandoCanonico
+    };
+    try {
+      appendLedger_('OS_Eventos', OS_EVENTOS_HEADERS, linha);
+      SpreadsheetApp.flush();
+    } catch (_) {
+      fail_('Não foi possível confirmar a gravação. Recarregue e repita com o mesmo identificador de requisição antes de tentar de novo.', 'WRITE_UNCONFIRMED');
+    }
+    return estadoAtualOS_(projetoId, decisao.osId);
+  } finally { lock.releaseLock(); }
+}
+
+function validarCamposExigidos_(statusNovo, params) {
+  (OS_CAMPOS_EXIGIDOS_POR_TRANSICAO[statusNovo] || []).forEach(function(campo) {
+    if (!params[campo] || !String(params[campo]).trim()) fail_('Campo obrigatório ausente para esta transição: ' + campo + '.', 'OS_REQUIRED_FIELD');
+  });
+}
+
+function criarOsOperacional_(user, p) {
+  // Política (alinhada a docs/os-acceptance.md, fluxo exigido passo 1-2):
+  // criação é ação de gestor/diretor, como atribuir/reabrir — executor só
+  // avança uma OS já atribuída a ele (ver avancarStatusOS_).
+  if (user.Perfil === 'executor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+  var escopo = requireText_(p.escopo, 2048, 'Escopo obrigatório.');
+  var origem = requireOrigem_(p.origem);
+  var origemDetalhe = requireCanonicalText_(p.origemDetalhe, 256);
+  // 'whatsapp_prep' é só um RÓTULO de proveniência para uma OS criada
+  // manualmente, por uma sessão autenticada com grant no projeto, a partir
+  // de uma mensagem que um humano leu e transcreveu — NUNCA um caminho de
+  // importação automática nem uma marca de "verificado". Exigir referência
+  // rastreável aqui impede que o rótulo seja usado sem nenhum vínculo.
+  if (origem === 'whatsapp_prep' && !origemDetalhe) fail_('origemDetalhe (referência da mensagem de origem) é obrigatório para origem whatsapp_prep.');
+  return executarComandoOS_(user, p, {
+    osId: undefined,
+    chaveCanonica: function() { return ['criar', escopo, origem, origemDetalhe]; },
+    aplicar: function() {
+      return { osId: Utilities.getUuid(), tipoEvento: 'criada', statusNovo: OS_STATUS_ORDEM[0], escopo: escopo, origem: origem, origemDetalhe: origemDetalhe };
+    }
+  });
+}
+
+function atribuirResponsavelOS_(user, p) {
+  if (user.Perfil === 'executor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+  var osId = requireText_(p.osId, 128, 'OS inválida.');
+  var responsavel = requireText_(p.responsavel, 128, 'Responsável obrigatório.').trim();
+  var expectedRevision = requireRevisaoEsperada_(p.expectedRevision);
+  return executarComandoOS_(user, p, {
+    osId: osId,
+    chaveCanonica: function() { return ['atribuir', osId, responsavel, expectedRevision]; },
+    aplicar: function(estadoAtual) {
+      if (estadoAtual.revisao !== expectedRevision) fail_('A OS foi alterada por outra pessoa. Recarregue antes de tentar novamente.', 'REVISION_CONFLICT');
+      var candidatos = rows_('Usuarios').filter(function(x) { return x.Usuario === responsavel; });
+      if (candidatos.length !== 1 || candidatos[0].Ativo !== 'Sim' || VALID_ROLES.indexOf(candidatos[0].Perfil) < 0) fail_('Responsável inválido ou inativo.', 'RESPONSIBLE_INVALID');
+      if (!temAcessoProjeto_(responsavel, estadoAtual.projetoId)) fail_('Responsável sem acesso a este projeto.', 'RESPONSIBLE_NOT_GRANTED');
+      return { osId: osId, tipoEvento: 'atribuida', statusAnterior: estadoAtual.status, statusNovo: estadoAtual.status, escopo: estadoAtual.escopo, responsavelAnterior: estadoAtual.responsavel, responsavelNovo: responsavel };
+    }
+  });
+}
+
+function avancarStatusOS_(user, p) {
+  var osId = requireText_(p.osId, 128, 'OS inválida.');
+  var statusNovo = requireText_(p.statusNovo, 64, 'Status inválido.');
+  var expectedRevision = requireRevisaoEsperada_(p.expectedRevision);
+  var motivo = requireCanonicalText_(p.motivo, 2048);
+  return executarComandoOS_(user, p, {
+    osId: osId,
+    chaveCanonica: function() { return ['avancar', osId, statusNovo, expectedRevision, motivo]; },
+    aplicar: function(estadoAtual) {
+      if (estadoAtual.revisao !== expectedRevision) fail_('A OS foi alterada por outra pessoa. Recarregue antes de tentar novamente.', 'REVISION_CONFLICT');
+      var indiceAtual = OS_STATUS_ORDEM.indexOf(estadoAtual.status);
+      var indiceNovo = OS_STATUS_ORDEM.indexOf(statusNovo);
+      if (indiceNovo < 0) fail_('Status inválido.', 'OS_INVALID_STATUS');
+      if (indiceNovo !== indiceAtual + 1) fail_('Transição de status não permitida a partir do estado atual.', 'OS_ILLEGAL_TRANSITION');
+      if (user.Perfil === 'executor' && estadoAtual.responsavel !== user.Usuario) fail_('Apenas o responsável designado pode avançar esta OS.', 'FORBIDDEN');
+      validarCamposExigidos_(statusNovo, { responsavelNovo: estadoAtual.responsavel, motivo: motivo });
+      return { osId: osId, tipoEvento: 'status_alterado', statusAnterior: estadoAtual.status, statusNovo: statusNovo, escopo: estadoAtual.escopo, responsavelAnterior: estadoAtual.responsavel, responsavelNovo: estadoAtual.responsavel, motivo: motivo };
+    }
+  });
+}
+
+function reabrirOsOperacional_(user, p) {
+  if (user.Perfil === 'executor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+  var osId = requireText_(p.osId, 128, 'OS inválida.');
+  var expectedRevision = requireRevisaoEsperada_(p.expectedRevision);
+  var motivo = requireText_(p.motivo, 2048, 'Motivo obrigatório para reabrir.');
+  var statusNovoPedido = requireCanonicalText_(p.statusNovo, 64);
+  return executarComandoOS_(user, p, {
+    osId: osId,
+    chaveCanonica: function() { return ['reabrir', osId, expectedRevision, motivo, statusNovoPedido]; },
+    aplicar: function(estadoAtual) {
+      if (estadoAtual.revisao !== expectedRevision) fail_('A OS foi alterada por outra pessoa. Recarregue antes de tentar novamente.', 'REVISION_CONFLICT');
+      if (estadoAtual.status !== 'Concluída') fail_('Só é possível reabrir uma OS concluída.', 'OS_NOT_COMPLETED');
+      var statusNovo = statusNovoPedido || 'Em execução';
+      if (OS_STATUS_ORDEM.indexOf(statusNovo) < 0 || statusNovo === 'Concluída') fail_('Etapa de reabertura inválida.', 'OS_INVALID_STATUS');
+      validarCamposExigidos_(statusNovo, {responsavelNovo:estadoAtual.responsavel,motivo:motivo});
+      return { osId: osId, tipoEvento: 'reaberta', statusAnterior: estadoAtual.status, statusNovo: statusNovo, escopo: estadoAtual.escopo, responsavelAnterior: estadoAtual.responsavel, responsavelNovo: estadoAtual.responsavel, motivo: motivo };
+    }
+  });
+}
+
+/** NUNCA chamado automaticamente — rodar manualmente no editor do Apps Script depois de decidir onde este ledger vive e aprovar a migração. */
+function setupOsOperacional() {
+  var ss = getSpreadsheet_(), specs = { OS_Eventos: OS_EVENTOS_HEADERS, OS_Acessos: OS_ACESSOS_HEADERS };
+  Object.keys(specs).forEach(function(n) {
+    var sh = ss.getSheetByName(n) || ss.insertSheet(n);
+    if (sh.getLastRow() === 0) sh.appendRow(specs[n]);
+    sh.setFrozenRows(1);
+  });
+}

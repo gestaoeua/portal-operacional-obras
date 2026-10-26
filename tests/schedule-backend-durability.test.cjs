@@ -1,0 +1,9 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto');
+test('real disk write is reread in separate Node process without memory state',()=>{
+ const dir=path.resolve(__dirname,'../../test-temp');fs.mkdirSync(dir,{recursive:true});const file=path.join(dir,'schedule-durability-'+randomUUID()+'.jsonl');
+ const modulePath=path.join(__dirname,'schedule-backend-harness.cjs');
+ const setup=`const fs=require('node:fs');const {harness}=require(${JSON.stringify(modulePath)});const file=${JSON.stringify(file)};const rows=[harness().rows()[0],...(fs.existsSync(file)?fs.readFileSync(file,'utf8').trim().split('\\n').filter(Boolean).map(JSON.parse):[])];const h=harness({rows,persist:r=>fs.appendFileSync(file,JSON.stringify(r.at(-1))+'\\n',{flush:true})});`;
+ const request={action:'scheduleSave',token:'fixture-manager',projetoId:'PILOTO_FICTICIO_AGENDA',requestId:randomUUID(),expectedRevision:0,assignment:{assignmentId:'persisted-fixture',projetoId:'PILOTO_FICTICIO_AGENDA',personId:'fake-person',personName:'Pessoa fictícia',locationId:'fake-place',locationName:'Local fictício',date:'2026-10-22',timezone:'America/New_York',sourceLabel:'Teste fictício de durabilidade'}};
+ const first=spawnSync(process.execPath,['-e',setup+`console.log(JSON.stringify(h.request(${JSON.stringify(request)})))`],{encoding:'utf8'});assert.equal(first.status,0,first.stderr);assert.equal(JSON.parse(first.stdout).ok,true);
+ const second=spawnSync(process.execPath,['-e',setup+`console.log(JSON.stringify(h.request({action:'scheduleList',token:'fixture-manager',projetoId:'PILOTO_FICTICIO_AGENDA'})))`],{encoding:'utf8'});assert.equal(second.status,0,second.stderr);const result=JSON.parse(second.stdout);assert.equal(result.dataset.assignments[0].assignmentId,'persisted-fixture');assert.equal(result.history.length,1);
+});

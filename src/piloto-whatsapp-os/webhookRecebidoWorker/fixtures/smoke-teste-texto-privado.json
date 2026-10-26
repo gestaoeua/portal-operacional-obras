@@ -1,0 +1,21 @@
+{
+  "event": "webhookReceived",
+  "instanceId": "instancia-ficticia-001",
+  "connectedPhone": "numero-conectado-ficticio-001",
+  "messageId": "msg-callback-ficticia-A1",
+  "isGroup": false,
+  "fromMe": false,
+  "chat": {
+    "id": "conversa-ficticia-A1"
+  },
+  "sender": {
+    "id": "remetente-ficticio-A1",
+    "pushName": "Pintor Exemplo Ficticio"
+  },
+  "moment": 1700000001,
+  "msgContent": {
+    "extendedTextMessage": {
+      "text": "Cheguei na obra fictícia, começando a pintura da sala."
+    }
+  }
+}

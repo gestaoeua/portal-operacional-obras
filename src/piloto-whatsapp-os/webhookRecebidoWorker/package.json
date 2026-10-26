@@ -1,0 +1,21 @@
+{
+  "name": "piloto-webhook-dedup-worker-teste-isolado",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Pacote NPM isolado (node_modules/lockfile próprios, separados da raiz do repositório) só para adaptar e testar, localmente, uma store de deduplicação em Cloudflare Workers + Durable Objects (SQLite). NUNCA implantado, NUNCA conectado a uma conta real — ver README.md. Isolado da raiz de propósito: a raiz usa vitest 1.6.1 (via vite), incompatível com a versão de vitest exigida pelo @cloudflare/vitest-plugin (^4.1.0 || ^5.0.0); por isso este diretório tem seu próprio package.json/lockfile/node_modules, nunca os da raiz.",
+  "scripts": {
+    "pretest": "WRANGLER_SEND_METRICS=false npx wrangler types",
+    "test": "vitest run --config vitest.config.ts && vitest run --config vitest.guard.config.ts",
+    "test:workers": "vitest run --config vitest.config.ts",
+    "test:guard": "vitest run --config vitest.guard.config.ts",
+    "pretypecheck": "WRANGLER_SEND_METRICS=false npx wrangler types",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.5",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5",
+    "wrangler": "4.151.2"
+  }
+}

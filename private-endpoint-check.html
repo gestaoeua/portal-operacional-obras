@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>RSF verificação privada</title>
+<h1>RSF — verificação de transporte privado</h1>
+<p>Somente leitura: listOsProjects sem sessão. Não cria OS nem envia senha.</p>
+<button id="check">Verificar conexão privada</button><pre id="result">Não executado</pre>
+<script type="module">
+import {post} from './src/central/transport.ts';
+document.querySelector('#check').onclick=async()=>{
+ const out=document.querySelector('#result'); out.textContent='Verificando';
+ try {await post({action:'listOsProjects'});out.textContent='Resposta inesperada: sucesso sem sessão. Nenhum conteúdo exibido.';}
+ catch(e){out.textContent=JSON.stringify({code:e.code,message:e.message});}
+};
+</script>

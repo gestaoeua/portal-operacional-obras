@@ -1,0 +1,8 @@
+node_modules/
+# Gerado por `wrangler types` (ver README.md, script "pretest"/"pretypecheck")
+# — reproduzível por comando, nunca precisa ser versionado; também contém
+# comentários de documentação (MDN, Apache License) que o scanner de
+# sanitização do repositório (semDadosReais.test.ts) trataria como "URL real"
+# se fosse versionado.
+worker-configuration.d.ts
+.wrangler/

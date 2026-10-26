@@ -25,3 +25,10 @@ pnpm-debug.log*
 *.tmp
 *.temp
 .cache/
+
+# Local test artifacts
+.frontend-test.cjs
+tests/.frontend-test.cjs
+playwright-report/
+test-results/
+.local-test-tmp/

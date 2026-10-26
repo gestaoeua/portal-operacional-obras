@@ -34,6 +34,7 @@ export default defineConfig({
       // sem mudança nenhuma de comportamento ou de saída.
       input: {
         main: resolve(__dirname, 'index.html'),
+        central: resolve(__dirname, 'central/index.html'),
         demo: resolve(__dirname, 'demo-os-cronograma/index.html'),
       },
     },

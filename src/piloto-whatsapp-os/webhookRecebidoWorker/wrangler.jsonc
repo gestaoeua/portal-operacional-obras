@@ -1,0 +1,46 @@
+{
+  // Config de Wrangler SOMENTE PARA TESTE LOCAL (via @cloudflare/vitest-plugin
+  // / Miniflare). NUNCA usado com `wrangler dev` contra uma conta real, NUNCA
+  // usado com `wrangler deploy`, NUNCA usado com `wrangler login` nesta
+  // rodada. Nenhum `account_id` é declarado aqui — mas isso NÃO é, por si
+  // só, o que impede um deploy real (correção de uma revisão desta rodada):
+  // com credenciais válidas já configuradas na máquina de quem roda o
+  // comando (`wrangler login` feito por essa pessoa, ou variáveis de
+  // ambiente `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`), o Wrangler
+  // pode resolver a conta de outras formas e `wrangler deploy` PODE
+  // funcionar mesmo sem `account_id` aqui. A barreira real contra um deploy
+  // acidental é a AUSÊNCIA DE AUTORIZAÇÃO EXPLÍCITA para publicar — ver
+  // RUNBOOK.md — nunca a ausência deste campo específico.
+  "name": "piloto-webhook-dedup-worker-teste-nunca-implantado",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": [],
+  "durable_objects": {
+    "bindings": [
+      { "name": "DEDUP_DO", "class_name": "DedupDurableObject" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["DedupDurableObject"] }
+  ],
+  // "vars" são configuração em TEXTO PLANO (nunca secrets) — ver
+  // RUNBOOK.md. RECEPTOR_HABILITADO é o interruptor local do receptor
+  // (worker.ts): "true" liga, qualquer outro valor/ausência desliga (503
+  // antes de qualquer leitura de corpo ou alocação de Durable Object).
+  //
+  // CORREÇÃO DESTA RODADA: este arquivo é a config DISTRIBUÍDA (a que
+  // seria usada por um `wrangler deploy` real, se um dia for autorizado) —
+  // por isso o valor aqui é "false" (desligado), o estado mais seguro, e
+  // NUNCA "true". O valor "true" usado pelos testes locais deste
+  // subpacote vem de um OVERRIDE só de teste em `vitest.config.ts`
+  // (`miniflare.bindings`), nunca deste arquivo — ver esse arquivo e
+  // README.md. Isto evita que alguém confunda "o que os testes usam" com
+  // "o que seria publicado" — uma implantação FUTURA real decide o valor
+  // de produção explicitamente no momento do deploy (RUNBOOK.md,
+  // checklist de ativação); "false" aqui não é só um placeholder, é a
+  // própria recomendação: comece desligado, ative só depois dos smoke
+  // tests.
+  "vars": {
+    "RECEPTOR_HABILITADO": "false"
+  }
+}

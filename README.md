@@ -1,52 +1,60 @@
-# Mapa de Progresso — Portal Operacional
+# RSF · Portal Operacional
 
-Sistema modular para tablets, hospedado no GitHub Pages e alimentado por Google Sheets.
+Evolução incremental do portal existente, preservando o cadastro de locais e o histórico de campo. React/TypeScript + adaptador Apps Script para as fontes Google Sheets existentes.
 
-## O que está pronto
+## Estado atual: preparação, não liberação para produção
 
-- Login por usuário e senha, com perfis `executor`, `gestor` e `diretor`.
-- Executor: escolhe o local, registra entrada, toca no serviço executado, no status final e em **Sair e salvar**.
-- Gestor: equipe ativa, locais em execução e histórico de serviços.
-- Diretor: progresso geral, distribuição por status e volume de registros.
-- A saída grava o histórico na aba `Registros` e atualiza o status na aba `Salas`.
-- Planta, MARKs, serviços, observações, coordenadas e identidade visual existentes foram preservados.
-- O modo de demonstração está desativado; nenhuma senha padrão é publicada.
+**Não publique esta versão em produção.** O frontend e os testes locais não eliminam os bloqueios de autenticação, persistência e acesso descritos em [docs/backend-security.md](docs/backend-security.md).
 
-## Estrutura desacoplada
+A versão antiga deste README indicava que só faltava publicar. Essa afirmação foi retirada após revisão do código: o armazenamento legado de senhas usa SHA-256 sem salt individual, o controle de tentativas é efêmero, e as gravações entre abas não são transacionais. Não crie contas de produção com esse mecanismo.
 
-- `src/`: interface do tablet e painéis por perfil.
-- `src/fieldApi.ts`: única ligação da interface com o banco; permite trocar Sheets por outro banco no futuro sem refazer as telas.
-- `apps-script/Code.gs`: API e criação das abas do banco.
-- `public/floor-plan.png`: planta do projeto atual.
-- `data/salas-inicial.csv`: cadastro atual dos locais.
+## O que foi implementado
 
-Cada novo projeto poderá ter seu próprio registro na aba `Projetos`, sua planta e suas salas sem misturar histórico de clientes diferentes. A próxima evolução natural é adicionar `ProjetoID` às salas e registros quando houver um segundo projeto real.
+- Interface responsiva preto/vermelho baseada nas seis referências aprovadas, sem copiar seus exemplos fictícios
+- Login, consulta autenticada de locais, histórico e execução de campo
+- OS em leitura autenticada, preservando o ID, endereço, status, escopo, proteções, dependências e observações da fonte original
+- Filtros de locais, detalhes de OS e retorno à lista
+- Sem persistência de tokens no navegador; logout revoga a sessão no servidor
+- Validação de perfis e conta ativa, prevenção de saída repetida e validação de esquema antes de gravar
+- Indicadores de locais e registros reais, sem equiparar serviço finalizado a unidade pronta para locação
+- Estado explícito de indisponibilidade para fotos/aprovações que ainda não existem como dados estruturados
 
-## Publicação (única etapa pendente)
+A aba OS não é uma nova base. O servidor consulta a fonte existente separadamente. Não há cópia de registros de clientes/funcionários no pacote da aplicação.
 
-1. Na planilha, abra **Extensões → Apps Script** e substitua o código pelo arquivo `apps-script/Code.gs`.
-2. No seletor de funções, execute uma vez `setupSistema`. Isso cria, sem apagar `Salas`, as abas `Usuarios`, `Registros`, `Projetos` e `Clientes`.
-3. Cadastre cada usuário na aba `Usuarios`. Gere o hash da senha chamando `gerarSenhaHash('SENHA FORTE')` no Apps Script e cole o resultado em `SenhaHash`.
-4. Use **Implantar → Gerenciar implantações → Editar → Nova versão → Implantar**, executando como você e permitindo acesso a qualquer pessoa.
-5. Copie a URL terminada em `/exec` para `src/config.ts`.
-6. Confirme que `DEMO_MODE` permanece como `false` em `src/fieldApi.ts`.
-7. Envie estes arquivos à branch de publicação do GitHub. O workflow em `.github/workflows/deploy.yml` faz o restante.
+## Fontes e limites
 
-## Segurança
+- `Salas` e `Registros`: permanecem na planilha configurada pelo backend original
+- `OS`: outra planilha, configurada no servidor por `OS_SPREADSHEET_ID` em Script Properties; leitura apenas para gestor/diretor
+- Nenhuma associação automática entre OS, MARKs de salas e projetos de custos
+- `Projetos` e `Clientes` do backend ainda não possuem cadastro consolidado
+- Divergências entre cópias de salas devem ser reconciliadas pelo responsável; nunca sobrescrever a fonte atual usando uma cópia
+- Fotografias, checklist de qualidade, autorização de entrega, responsáveis e prazos necessitam contrato aditivo e revisão de acesso
 
-O repositório não contém usuários nem senhas padrão. As credenciais são criadas apenas na planilha privada, com senha armazenada como hash.
+## Desenvolvimento local
 
-## Validação realizada
-
-- TypeScript sem erros.
-- Regras de login, sessão, perfis, entrada única, saída e atualização de status revisadas.
-- Layout responsivo: botões grandes, sem escrita no fluxo do executor e adaptação para tablet/celular.
-- Site público atual não foi alterado.
-
-## Comandos locais
-
-```bash
-npm install
+```sh
+npm ci
+npm test
 npm run build
-npm run dev
 ```
+
+Para testar a integração apenas em staging isolado, copie `.env.example` para `.env.local` e configure `VITE_APPS_SCRIPT_URL` com a URL de um backend autenticado já verificado. Essa variável contém apenas URL, nunca senha, token ou segredo. Sem configuração, a aplicação falha de forma explícita.
+
+```sh
+npm run dev -- --host 127.0.0.1
+```
+
+`tests/ui.cjs` usa Playwright/Chromium e dados sintéticos interceptados em `/test-api`. Não usa dados nem credenciais reais. Os testes de backend executam Apps Script em um VM com serviços simulados; não comprovam comportamento de implantação Google.
+
+## Portões obrigatórios para publicação
+
+1. Aprovar público e matriz de acesso: gestão, equipe e/ou clientes
+2. Substituir autenticação legada por mecanismo consolidado, com recuperação e proteção contra abuso
+3. Revisar isolamento por projeto/cliente e restringir fontes/fotos/documentos
+4. Definir backup, trilha de auditoria, idempotência e recuperação de gravações
+5. Validar schemas e dados em staging, incluindo sessões expiradas, falhas de rede, cliques repetidos e permissões
+6. Confirmar configurações de implantação e de fontes sem publicar dados no repositório
+7. Revisar exposição da implantação antiga e planejar substituição/rollback
+8. Somente então autorizar e executar implantação; verificar commit e CI exatos
+
+O workflow de publicação já existente permanece no repositório. Ele não foi executado por este trabalho. Não mescle esta preparação em `main` antes dos portões acima.

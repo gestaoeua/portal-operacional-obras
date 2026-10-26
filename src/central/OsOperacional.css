@@ -1,1 +1,1451 @@
-.os-operacional{display:grid;gap:18px}.os-controls{display:flex;align-items:end;gap:18px;flex-wrap:wrap}.os-controls label{min-width:230px}.os-columns{display:grid;grid-template-columns:minmax(240px, .8fr) minmax(320px, 1.6fr);gap:20px}.os-operacional label{display:grid;gap:7px;margin:12px 0;font-weight:600}.os-operacional textarea,.os-operacional select{padding:12px;border:1px solid #d7dce2;border-radius:8px;background:white;font:inherit;max-width:100%}.os-operacional textarea{min-height:84px;resize:vertical}.os-list-item{display:grid!important;width:100%;gap:6px;text-align:left;margin:10px 0;padding:14px!important}.os-list-item[aria-pressed=true]{border-color:#cf2736;background:#fff5f5}.os-list-item span,.os-list-item small{font-weight:400;color:#596273}.os-stages{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:7px;margin:22px 0}.os-stages li{font-size:12px;border:1px solid #d8dce1;border-radius:20px;padding:7px 10px;color:#6a7280}.os-stages .reached{background:#fff0f0;border-color:#eac0c0;color:#951d28}.os-stages [aria-current=step]{background:#c72a37;color:white;border-color:#c72a37}.os-history{padding-left:20px}.os-history li{padding:10px 0;border-bottom:1px solid #e8ebef}.os-history span{display:block;font-size:13px;color:#596273;margin-top:5px}.os-success{padding:13px 18px;border-radius:8px;background:#edf8f0;color:#245c34}.os-actions{margin:16px 0}.os-operacional code{overflow-wrap:anywhere;display:block;margin:12px 0}@media(max-width:900px){.os-columns{grid-template-columns:1fr}}
+/* =========================================================
+   RSF — ORDENS DE SERVIÇO
+   OsOperacional.css
+
+   Visual:
+   - Preto / vermelho RSF
+   - Cards claros
+   - Tabela operacional
+   - Estados reais da OS
+   - Desktop + tablet + mobile
+
+   IMPORTANTE:
+   Este CSS é somente apresentação.
+   Nenhuma regra operacional é definida aqui.
+   ========================================================= */
+
+/* =========================================================
+   VARIÁVEIS LOCAIS
+   ========================================================= */
+
+.os-operacional {
+  --rsf-black: #0b0b0d;
+  --rsf-black-soft: #17171a;
+  --rsf-red: #d71920;
+  --rsf-red-dark: #b41218;
+  --rsf-red-soft: #fff1f2;
+
+  --rsf-white: #ffffff;
+  --rsf-bg: #f5f6f8;
+
+  --rsf-text: #17181b;
+  --rsf-text-soft: #62666d;
+  --rsf-border: #e1e3e7;
+
+  --rsf-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.04);
+
+  --status-received: #d71920;
+  --status-check: #b76e00;
+  --status-scheduled: #3767b1;
+  --status-running: #1769aa;
+  --status-validation: #7554a5;
+  --status-completed: #18864b;
+
+  width: 100%;
+  min-width: 0;
+  color: var(--rsf-text);
+  box-sizing: border-box;
+}
+
+.os-operacional *,
+.os-operacional *::before,
+.os-operacional *::after {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   BASE / PAINÉIS
+   ========================================================= */
+
+.os-operacional .panel {
+  background: var(--rsf-white);
+  border: 1px solid var(--rsf-border);
+  border-radius: 14px;
+  box-shadow: var(--rsf-shadow);
+}
+
+.os-operacional h1,
+.os-operacional h2,
+.os-operacional h3,
+.os-operacional p {
+  margin-top: 0;
+}
+
+.os-operacional h1 {
+  margin-bottom: 6px;
+  color: var(--rsf-black);
+  font-size: clamp(1.55rem, 2.2vw, 2.15rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.os-operacional h2 {
+  margin-bottom: 6px;
+  color: var(--rsf-black);
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.os-operacional h3 {
+  color: var(--rsf-black);
+  font-size: 0.98rem;
+}
+
+.os-operacional button,
+.os-operacional input,
+.os-operacional select,
+.os-operacional textarea {
+  font: inherit;
+}
+
+.os-operacional button {
+  cursor: pointer;
+}
+
+.os-operacional button:disabled,
+.os-operacional input:disabled,
+.os-operacional select:disabled,
+.os-operacional textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.os-operacional label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  color: #35373c;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.os-operacional input,
+.os-operacional select,
+.os-operacional textarea {
+  width: 100%;
+  border: 1px solid #d7d9de;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--rsf-text);
+  outline: none;
+
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.os-operacional input,
+.os-operacional select {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.os-operacional textarea {
+  min-height: 100px;
+  padding: 11px 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.os-operacional input:focus,
+.os-operacional select:focus,
+.os-operacional textarea:focus {
+  border-color: var(--rsf-red);
+  box-shadow:
+    0 0 0 3px rgba(215, 25, 32, 0.11);
+}
+
+.os-operacional .muted {
+  color: var(--rsf-text-soft);
+}
+
+/* =========================================================
+   ACESSIBILIDADE
+   ========================================================= */
+
+.os-operacional .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================
+   BOTÕES
+   ========================================================= */
+
+.os-operacional button {
+  min-height: 40px;
+  padding: 9px 14px;
+
+  border: 1px solid #d6d8dc;
+  border-radius: 9px;
+
+  background: #fff;
+  color: #25272b;
+
+  font-size: 0.82rem;
+  font-weight: 700;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 100ms ease,
+    box-shadow 150ms ease;
+}
+
+.os-operacional button:hover:not(:disabled) {
+  border-color: #b9bcc2;
+  background: #f8f8f9;
+}
+
+.os-operacional button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.os-operacional .primary {
+  border-color: var(--rsf-red);
+  background: var(--rsf-red);
+  color: #fff;
+
+  box-shadow:
+    0 4px 12px rgba(215, 25, 32, 0.17);
+}
+
+.os-operacional .primary:hover:not(:disabled) {
+  border-color: var(--rsf-red-dark);
+  background: var(--rsf-red-dark);
+}
+
+.os-operacional .danger-outline {
+  border-color: rgba(215, 25, 32, 0.4);
+  background: #fff;
+  color: var(--rsf-red);
+}
+
+.os-operacional .danger-outline:hover:not(:disabled) {
+  border-color: var(--rsf-red);
+  background: var(--rsf-red-soft);
+}
+
+/* =========================================================
+   CABEÇALHO DA PÁGINA
+   ========================================================= */
+
+.os-work-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.os-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+
+  padding: 4px 2px 2px;
+}
+
+.os-page-head > div:first-child {
+  min-width: 0;
+}
+
+.os-page-head p:not(.os-eyebrow) {
+  margin-bottom: 0;
+  color: var(--rsf-text-soft);
+  font-size: 0.9rem;
+}
+
+.os-eyebrow {
+  margin-bottom: 7px;
+
+  color: var(--rsf-red);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.os-new {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+/* =========================================================
+   CONTROLE DE PROJETO
+   ========================================================= */
+
+.os-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+
+  padding: 14px 16px;
+}
+
+.os-controls label {
+  flex: 0 1 320px;
+}
+
+.os-controls > span {
+  margin-left: auto;
+  align-self: center;
+
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   CARDS DE RESUMO
+   ========================================================= */
+
+.os-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(7, minmax(125px, 1fr));
+  gap: 10px;
+}
+
+.os-summary > button {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+
+  min-width: 0;
+  min-height: 118px;
+  padding: 15px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--rsf-border);
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff 0%,
+      #fafafa 100%
+    );
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03);
+
+  text-align: left;
+}
+
+.os-summary > button::before {
+  content: "";
+
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 3px;
+
+  background: #b7bbc1;
+}
+
+.os-summary > button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #c8cbd0;
+
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.06);
+}
+
+.os-summary > button.active {
+  border-color:
+    rgba(215, 25, 32, 0.4);
+
+  box-shadow:
+    0 0 0 2px
+      rgba(215, 25, 32, 0.07),
+    0 8px 22px
+      rgba(0, 0, 0, 0.05);
+}
+
+.os-summary > button:first-child::before {
+  background: var(--rsf-red);
+}
+
+.os-summary > button > span {
+  min-height: 30px;
+
+  color: #414349;
+  font-size: 0.69rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.os-summary > button > strong {
+  color: #111216;
+  font-size: 1.85rem;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.os-summary > button > small {
+  margin-top: auto;
+
+  color: #777b82;
+  font-size: 0.68rem;
+}
+
+/* =========================================================
+   CORES DOS CARDS POR STATUS
+   ========================================================= */
+
+.os-summary > .status-recebida::before {
+  background: var(--status-received);
+}
+
+.os-summary > .status-em-conferencia::before {
+  background: var(--status-check);
+}
+
+.os-summary > .status-programada::before {
+  background: var(--status-scheduled);
+}
+
+.os-summary > .status-em-execucao::before {
+  background: var(--status-running);
+}
+
+.os-summary > .status-aguardando-validacao::before {
+  background: var(--status-validation);
+}
+
+.os-summary > .status-concluida::before {
+  background: var(--status-completed);
+}
+
+/* =========================================================
+   AVISOS
+   ========================================================= */
+
+.os-operacional .notice {
+  margin: 0;
+  padding: 11px 14px;
+
+  border: 1px solid #e1e3e7;
+  border-left: 3px solid #8b8e94;
+  border-radius: 9px;
+
+  background: #f8f8f9;
+
+  color: #55585e;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.os-operacional .alert {
+  margin: 0;
+  padding: 13px 15px;
+
+  border: 1px solid #efb3b6;
+  border-left: 4px solid var(--rsf-red);
+  border-radius: 10px;
+
+  background: #fff4f4;
+  color: #711116;
+
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.os-operacional .alert p {
+  margin: 7px 0;
+}
+
+.os-operacional .alert code {
+  display: block;
+
+  margin: 8px 0;
+  padding: 7px 9px;
+
+  overflow-wrap: anywhere;
+
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.75);
+
+  color: #4d1518;
+  font-size: 0.72rem;
+}
+
+.os-success {
+  margin: 0;
+  padding: 11px 14px;
+
+  border: 1px solid #b9dfc8;
+  border-left: 4px solid var(--status-completed);
+  border-radius: 9px;
+
+  background: #f1faf5;
+  color: #126137;
+
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* =========================================================
+   FORMULÁRIO NOVA OS
+   ========================================================= */
+
+.os-create {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 0.65fr)
+    minmax(280px, 1.5fr)
+    auto;
+  align-items: end;
+  gap: 16px;
+
+  padding: 18px;
+}
+
+.os-create h2 {
+  margin-bottom: 5px;
+}
+
+.os-create p {
+  margin-bottom: 0;
+  line-height: 1.4;
+}
+
+.os-create textarea {
+  min-height: 80px;
+}
+
+.os-create > button {
+  min-width: 140px;
+}
+
+/* =========================================================
+   TABELA
+   ========================================================= */
+
+.os-table-panel {
+  overflow: hidden;
+}
+
+.os-table-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+
+  padding: 16px 18px;
+
+  border-bottom:
+    1px solid var(--rsf-border);
+}
+
+.os-table-toolbar h2 {
+  margin-bottom: 3px;
+}
+
+.os-table-toolbar p {
+  margin-bottom: 0;
+  font-size: 0.75rem;
+}
+
+.os-search {
+  width: min(330px, 100%);
+}
+
+.os-search span {
+  font-size: 0.7rem;
+}
+
+.os-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.os-table {
+  width: 100%;
+  min-width: 850px;
+
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.os-table th {
+  padding: 10px 13px;
+
+  border-bottom:
+    1px solid var(--rsf-border);
+
+  background: #fafafa;
+
+  color: #6d7076;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.os-table td {
+  padding: 13px;
+
+  border-bottom:
+    1px solid #eceef1;
+
+  color: #34363a;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.os-table tbody tr {
+  transition:
+    background 130ms ease;
+}
+
+.os-table tbody tr:hover {
+  background: #fafafb;
+}
+
+.os-table tbody tr.selected {
+  background: #fff6f6;
+}
+
+.os-table tbody tr.selected td:first-child {
+  box-shadow:
+    inset 3px 0 0 var(--rsf-red);
+}
+
+.os-table td:first-child strong {
+  color: #16171a;
+  white-space: nowrap;
+}
+
+.os-table td:nth-child(2) {
+  min-width: 240px;
+  max-width: 440px;
+}
+
+.os-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+.os-table td:nth-child(5) {
+  text-align: center;
+}
+
+.os-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+
+  border-radius: 50%;
+
+  color: var(--rsf-red);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.os-open:hover:not(:disabled) {
+  border-color:
+    rgba(215, 25, 32, 0.35);
+
+  background: var(--rsf-red-soft);
+}
+
+/* =========================================================
+   BADGES DE STATUS
+   ========================================================= */
+
+.os-status {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 25px;
+  padding: 4px 9px;
+
+  border-radius: 999px;
+
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.os-status.status-recebida {
+  background: #fff0f1;
+  color: #b8141a;
+}
+
+.os-status.status-em-conferencia {
+  background: #fff6e7;
+  color: #945a00;
+}
+
+.os-status.status-programada {
+  background: #eef4ff;
+  color: #315b9a;
+}
+
+.os-status.status-em-execucao {
+  background: #eaf5ff;
+  color: #0d619d;
+}
+
+.os-status.status-aguardando-validacao {
+  background: #f2edfb;
+  color: #684895;
+}
+
+.os-status.status-concluida {
+  background: #eaf8f0;
+  color: #137241;
+}
+
+/* =========================================================
+   ESTADOS VAZIOS
+   ========================================================= */
+
+.os-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 170px;
+  padding: 28px;
+
+  text-align: center;
+}
+
+.os-empty::before {
+  content: "○";
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+  margin-bottom: 11px;
+
+  border: 1px solid #d9dce1;
+
+  border-radius: 50%;
+  background: #fafafa;
+
+  color: #9a9da3;
+  font-size: 1.35rem;
+}
+
+.os-empty b {
+  margin-bottom: 5px;
+
+  color: #303237;
+  font-size: 0.88rem;
+}
+
+.os-empty span {
+  max-width: 470px;
+
+  color: var(--rsf-text-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   DETALHE DA OS
+   ========================================================= */
+
+.os-detail {
+  padding: 20px;
+}
+
+.os-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+
+  border-bottom: 1px solid var(--rsf-border);
+}
+
+.os-detail-head > div {
+  min-width: 0;
+}
+
+.os-detail-head h2 {
+  margin-bottom: 4px;
+
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+
+.os-detail-head small {
+  display: block;
+}
+
+.os-detail-head > button {
+  flex: 0 0 auto;
+}
+
+/* =========================================================
+   RESUMO DO DETALHE
+   ========================================================= */
+
+.os-detail-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 10px;
+
+  margin: 18px 0;
+}
+
+.os-detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  min-width: 0;
+  padding: 13px 14px;
+
+  border: 1px solid #e4e6e9;
+  border-radius: 10px;
+
+  background: #fafafb;
+}
+
+.os-detail-grid span {
+  color: #777a80;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.os-detail-grid b {
+  overflow-wrap: anywhere;
+
+  color: #202125;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+/* =========================================================
+   FLUXO / ETAPAS DA OS
+   ========================================================= */
+
+.os-stages {
+  position: relative;
+
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(90px, 1fr));
+
+  gap: 0;
+
+  margin: 4px 0 22px;
+  padding: 0;
+
+  list-style: none;
+}
+
+.os-stages::before {
+  content: "";
+
+  position: absolute;
+  top: 15px;
+  left: calc(100% / 12);
+  right: calc(100% / 12);
+
+  height: 2px;
+
+  background: #e2e4e7;
+}
+
+.os-stages li {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding: 37px 6px 0;
+
+  color: #8a8d93;
+
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.os-stages li::before {
+  content: "";
+
+  position: absolute;
+  top: 7px;
+  left: 50%;
+
+  width: 17px;
+  height: 17px;
+
+  transform: translateX(-50%);
+
+  border: 3px solid #fff;
+  border-radius: 50%;
+
+  background: #cfd2d7;
+
+  box-shadow:
+    0 0 0 1px #cfd2d7;
+}
+
+.os-stages li.reached {
+  color: #33353a;
+}
+
+.os-stages li.reached::before {
+  background: var(--rsf-red);
+
+  box-shadow:
+    0 0 0 1px var(--rsf-red);
+}
+
+.os-stages li[aria-current="step"] {
+  color: var(--rsf-red);
+  font-weight: 900;
+}
+
+.os-stages li[aria-current="step"]::before {
+  width: 21px;
+  height: 21px;
+  top: 5px;
+
+  background: var(--rsf-red);
+
+  box-shadow:
+    0 0 0 1px var(--rsf-red),
+    0 0 0 5px rgba(215, 25, 32, 0.11);
+}
+
+/* Linha vermelha visual apenas entre etapas já atingidas.
+   O estado real continua vindo do backend. */
+
+.os-stages li.reached:not(:first-child)::after {
+  content: "";
+
+  position: absolute;
+  top: 15px;
+  right: 50%;
+
+  width: 100%;
+  height: 2px;
+
+  z-index: -1;
+
+  background: var(--rsf-red);
+}
+
+/* =========================================================
+   CAMPOS DO DETALHE
+   ========================================================= */
+
+.os-detail > label {
+  margin-top: 15px;
+}
+
+.os-detail > label select {
+  max-width: 480px;
+}
+
+.os-detail > label textarea {
+  min-height: 110px;
+}
+
+.os-detail > label + button {
+  margin-top: 9px;
+}
+
+/* =========================================================
+   AÇÕES DA OS
+   ========================================================= */
+
+.os-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 16px;
+  padding-top: 16px;
+
+  border-top: 1px solid var(--rsf-border);
+}
+
+.os-actions .primary {
+  min-width: 180px;
+}
+
+/* =========================================================
+   CABEÇALHO DO HISTÓRICO
+   ========================================================= */
+
+.os-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  margin-top: 24px;
+  margin-bottom: 10px;
+  padding-top: 19px;
+
+  border-top: 1px solid var(--rsf-border);
+}
+
+.os-history-head h3 {
+  margin: 0;
+}
+
+.os-history-head span {
+  font-size: 0.72rem;
+}
+
+/* =========================================================
+   HISTÓRICO PERSISTIDO
+   ========================================================= */
+
+.os-history {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+.os-history li {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  margin-left: 8px;
+  padding:
+    2px 0 18px 23px;
+
+  border-left: 2px solid #e3e5e8;
+}
+
+.os-history li::before {
+  content: "";
+
+  position: absolute;
+  top: 4px;
+  left: -6px;
+
+  width: 10px;
+  height: 10px;
+
+  border: 2px solid #fff;
+  border-radius: 50%;
+
+  background: var(--rsf-red);
+
+  box-shadow:
+    0 0 0 1px var(--rsf-red);
+}
+
+.os-history li:last-child {
+  padding-bottom: 4px;
+}
+
+.os-history strong {
+  color: #25272b;
+  font-size: 0.78rem;
+}
+
+.os-history span {
+  color: #73767c;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.os-history p {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+
+  border-radius: 7px;
+
+  background: #f7f7f8;
+
+  color: #4b4e53;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+/* =========================================================
+   HISTÓRICO VAZIO
+   ========================================================= */
+
+.os-empty-history {
+  margin: 0;
+  padding: 13px 14px;
+
+  border: 1px dashed #d7d9dd;
+  border-radius: 9px;
+
+  background: #fafafa;
+
+  color: #777a80;
+  font-size: 0.75rem;
+}
+
+/* =========================================================
+   COMPATIBILIDADE COM LAYOUT ANTIGO
+   ========================================================= */
+
+.os-columns {
+  display: grid;
+  grid-template-columns:
+    minmax(260px, 0.8fr)
+    minmax(340px, 1.4fr);
+  gap: 16px;
+}
+
+.os-columns > .panel {
+  padding: 16px;
+}
+
+/* =========================================================
+   ITEM DE LISTA ANTIGO
+   ========================================================= */
+
+.os-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 12px 13px;
+
+  border: 1px solid #e0e2e5;
+  border-radius: 9px;
+
+  background: #fff;
+
+  text-align: left;
+}
+
+.os-list-item:hover:not(:disabled) {
+  border-color: #c8cbd0;
+  background: #fafafb;
+}
+
+.os-list-item[aria-pressed="true"] {
+  border-color:
+    rgba(215, 25, 32, 0.42);
+
+  background: #fff5f5;
+
+  box-shadow:
+    inset 3px 0 0 var(--rsf-red);
+}
+
+.os-list-item strong {
+  color: #25272b;
+  font-size: 0.8rem;
+}
+
+.os-list-item span {
+  color: #55585e;
+  font-size: 0.72rem;
+}
+
+.os-list-item small {
+  color: #81848a;
+  font-size: 0.68rem;
+}
+
+/* =========================================================
+   FOCO DE TECLADO
+   ========================================================= */
+
+.os-operacional button:focus-visible,
+.os-operacional input:focus-visible,
+.os-operacional select:focus-visible,
+.os-operacional textarea:focus-visible {
+  outline: 3px solid
+    rgba(215, 25, 32, 0.22);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   TABLET / TELAS MÉDIAS
+   ========================================================= */
+
+@media (max-width: 1180px) {
+  .os-summary {
+    grid-template-columns:
+      repeat(4, minmax(140px, 1fr));
+  }
+
+  .os-detail-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .os-page-head {
+    align-items: stretch;
+  }
+
+  .os-controls {
+    flex-wrap: wrap;
+  }
+
+  .os-controls label {
+    flex: 1 1 260px;
+  }
+
+  .os-controls > span {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .os-create {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .os-create > button {
+    justify-self: start;
+  }
+
+  .os-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .os-stages {
+    overflow-x: auto;
+    grid-template-columns:
+      repeat(6, minmax(120px, 1fr));
+
+    padding-bottom: 8px;
+  }
+}
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .os-work-orders {
+    gap: 12px;
+  }
+
+  .os-page-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .os-new {
+    width: 100%;
+  }
+
+  .os-controls {
+    align-items: stretch;
+    padding: 13px;
+  }
+
+  .os-controls label {
+    flex-basis: 100%;
+  }
+
+  .os-controls > button {
+    width: 100%;
+  }
+
+  /*
+   * Cards viram rolagem horizontal.
+   * Isso mantém números legíveis sem
+   * comprimir sete cards no celular.
+   */
+
+  .os-summary {
+    display: flex;
+
+    margin-right: -1px;
+    padding-bottom: 5px;
+
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+
+    scroll-snap-type: x proximity;
+  }
+
+  .os-summary > button {
+    flex: 0 0 145px;
+
+    min-height: 108px;
+
+    scroll-snap-align: start;
+  }
+
+  .os-summary > button > strong {
+    font-size: 1.65rem;
+  }
+
+  .os-table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+
+    padding: 14px;
+  }
+
+  .os-search {
+    width: 100%;
+  }
+
+  .os-table {
+    min-width: 760px;
+  }
+
+  .os-detail {
+    padding: 15px;
+  }
+
+  .os-detail-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .os-detail-head > button {
+    align-self: flex-start;
+  }
+
+  .os-detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .os-actions {
+    align-items: stretch;
+  }
+
+  .os-actions button {
+    width: 100%;
+  }
+
+  .os-history-head {
+    align-items: flex-start;
+  }
+}
+
+/* =========================================================
+   CELULAR PEQUENO
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .os-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .os-page-head h1 {
+    font-size: 1.55rem;
+  }
+
+  .os-summary > button {
+    flex-basis: 135px;
+  }
+
+  .os-operacional .panel {
+    border-radius: 11px;
+  }
+
+  .os-history li {
+    padding-left: 18px;
+  }
+}
+
+/* =========================================================
+   REDUÇÃO DE MOVIMENTO
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .os-operacional *,
+  .os-operacional *::before,
+  .os-operacional *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   IMPRESSÃO / RELATÓRIO SIMPLES
+   ========================================================= */
+
+@media print {
+  .os-operacional {
+    --rsf-shadow: none;
+
+    color: #000;
+  }
+
+  .os-new,
+  .os-controls button,
+  .os-search,
+  .os-open,
+  .os-actions,
+  .os-detail-head > button {
+    display: none !important;
+  }
+
+  .os-operacional .panel,
+  .os-summary > button {
+    box-shadow: none;
+  }
+
+  .os-table-wrap {
+    overflow: visible;
+  }
+
+  .os-table {
+    min-width: 0;
+  }
+}

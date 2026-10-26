@@ -16,12 +16,13 @@ const tick=()=>new Promise(r=>setTimeout(r,0));
 const text=()=>document.body.textContent;
 async function click(label){const b=[...document.querySelectorAll('button')].find(x=>x.textContent.includes(label));assert.ok(b,label);assert.equal(b.disabled,false,label+' enabled');await act(async()=>{b.click();await tick();await tick();});}
 async function fill(el,value){assert.ok(el);await act(async()=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value').set.call(el,value);el.dispatchEvent(new window.Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));await tick();});}
+async function openRow(text){const row=[...document.querySelectorAll('tr')].find(r=>r.textContent.includes(text));assert.ok(row,text);const b=row.querySelector('button.os-open');assert.ok(b,text+' open button');assert.equal(b.disabled,false,text+' open enabled');await act(async()=>{b.click();await tick();await tick();});}
 let h,root;
 async function start(){
   h=harness();global.fetch=async(url,options)=>{assert.equal(url,'https://fixture.invalid/api');const p=JSON.parse(options.body.get('payload'));return {ok:true,json:async()=>h.post(p)};};
   await act(async()=>{root=createRoot(document.getElementById('root'));root.render(React.createElement(App));await tick();});
   await fill(document.querySelector('input[autocomplete=username]'),'gestora');await fill(document.querySelector('input[type=password]'),'test-pass');
-  await click('Entrar');await click('Ordens de serviço');
+  await click('Entrar');await click('Ordens de serviço');await click('＋ Nova OS');
   assert.ok(text().includes('Nova ordem de serviço'));
 }
 async function stop(){await act(async()=>{root.unmount();await tick();});}
@@ -30,12 +31,12 @@ test('actual central UI and Apps Script fixture: create, reopen detail, assign, 
   try{
     await fill(document.querySelector('textarea[aria-label="Descrição do serviço"]'),'FICTICIO — Pintura da unidade de teste');await click('Criar e salvar OS');
     assert.ok(text().includes('OS salva e confirmada. Revisão 1.'));
-    await click('Recarregar OS');await click('FICTICIO — Pintura da unidade de teste');
+    await click('Recarregar');await openRow('FICTICIO — Pintura da unidade de teste');
     await fill(document.querySelector('select[aria-label="Responsável"]'),'exec1');await click('Salvar responsável');
     for(const stage of ['Em conferência','Programada','Em execução','Aguardando validação']) await click('Avançar para '+stage);
     await fill(document.querySelector('textarea[aria-label="Observação / evidência textual"]'),'FICTICIO — inspeção aprovada no teste');await click('Avançar para Concluída');
     await fill(document.querySelector('textarea[aria-label="Observação / evidência textual"]'),'FICTICIO — retoque solicitado');await click('Reabrir OS em execução');
-    await click('Recarregar OS');
+    await click('Recarregar');
     assert.equal(document.querySelectorAll('.os-history li').length,8);
     assert.ok(text().includes('FICTICIO — retoque solicitado'));
     assert.equal(h.sheets.OS_Eventos.data.length,9);
@@ -66,6 +67,6 @@ test('actual UI: revoked project clears previously loaded private order details'
   await start();try{
     await fill(document.querySelector('textarea[aria-label="Descrição do serviço"]'),'FICTICIO — conteúdo protegido');await click('Criar e salvar OS');
     const rows=h.sheets.OS_Acessos.data;for(let i=rows.length-1;i>0;i--)if(rows[i][0]==='ProjetoA'&&rows[i][1]==='gestora')rows.splice(i,1);
-    await click('Recarregar OS');assert.ok(text().includes('Sem acesso a este projeto.'));assert.ok(!text().includes('FICTICIO — conteúdo protegido'));
+    await click('Recarregar');assert.ok(text().includes('Sem acesso a este projeto.'));assert.ok(!text().includes('FICTICIO — conteúdo protegido'));
   }finally{await stop();}
 });

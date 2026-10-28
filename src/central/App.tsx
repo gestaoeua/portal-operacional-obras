@@ -11,6 +11,7 @@ import SchedulePage from "./SchedulePage";
 import KapsoDrafts from "./KapsoDrafts";
 import PropertiesUnits from "./properties/PropertiesUnits";
 import TeamsServices from "./catalogs/TeamsServices";
+import WhoIsWorking, { WorkOverview } from "./WhoIsWorking";
 import logo from "./rsf-logo.jpeg";
 import { IS_FIXTURE } from "./config";
 
@@ -25,6 +26,7 @@ const actions: Array<[WorkAction, string]> = [
 ];
 const pages = [
   ["dashboard", "Visão geral", "◫"],
+  ["working", "Quem está trabalhando", "●"],
   ["properties", "Propriedades", "⌂"],
   ["units", "Unidades", "▣"],
   ["locations", "Locais de campo", "⌂"],
@@ -622,7 +624,7 @@ export default function App() {
         </header>
         <div className="sync">
           <span>
-            {page === "messages" ? "Rascunhos recebidos — origem indicada abaixo" : ["orders","analytics","calendar"].includes(page) ? "Ordens de serviço por projeto autorizado" : loading
+            {page === "working" ? "Ponto de hoje no QuickBooks Time" : page === "messages" ? "Rascunhos recebidos — origem indicada abaixo" : ["orders","analytics","calendar"].includes(page) ? "Ordens de serviço por projeto autorizado" : loading
               ? "Consultando a operação…"
               : updated
                 ? `Locais e campo: consulta às ${updated}`
@@ -645,7 +647,14 @@ export default function App() {
               " Os dados abaixo pertencem à última consulta confirmada."}
           </div>
         )}
-        {page === "messages" ? <KapsoDrafts key={session.token} token={session.token} onOpenOrders={()=>setPage("orders")} onPendingChange={setOsLocked}/> : page === "orders" ? <OsOperacional session={session} revision={osRevision} onExpired={expireSession} onPendingChange={setOsLocked} /> : page === "analytics" ? <OsIndicatorsPage token={session.token} revision={osRevision} onExpired={expireSession}/> : page === "calendar" ? <SchedulePage token={session.token} onExpired={expireSession} onPendingChange={setScheduleLocked}/> : page === "teams" || page === "services" ? <TeamsServices key={page} view={page} projetoId=""/> : page === "properties" || page === "units" ? <PropertiesUnits projetoId=""/> : !loaded ? (
+        {page === "working" ? <WhoIsWorking key={session.token} token={session.token} revision={osRevision} onExpired={expireSession}/> : page === "messages" ? <KapsoDrafts key={session.token} token={session.token} onOpenOrders={()=>setPage("orders")} onPendingChange={setOsLocked}/> : page === "orders" ? <OsOperacional session={session} revision={osRevision} onExpired={expireSession} onPendingChange={setOsLocked} /> : page === "analytics" ? <OsIndicatorsPage token={session.token} revision={osRevision} onExpired={expireSession}/> : page === "calendar" ? <SchedulePage token={session.token} onExpired={expireSession} onPendingChange={setScheduleLocked}/> : page === "teams" || page === "services" ? <TeamsServices key={page} view={page} projetoId=""/> : page === "properties" || page === "units" ? <PropertiesUnits projetoId=""/> : page === "dashboard" && !loaded ? (
+          <>
+            {session.role !== "executor" && <WorkOverview key={session.token} token={session.token} revision={osRevision} onExpired={expireSession} onOpen={() => setPage("working")} />}
+            <Empty title={loading ? "Carregando locais e campo" : "Locais e campo ainda não disponíveis"}>
+              {loading ? "Aguarde a confirmação do servidor." : "Confira a conexão e tente atualizar. Nenhum dado de demonstração é utilizado."}
+            </Empty>
+          </>
+        ) : !loaded ? (
           <Empty
             title={
               loading ? "Carregando seus dados" : "Dados ainda não disponíveis"
@@ -658,7 +667,10 @@ export default function App() {
         ) : (
           <>
             {page === "dashboard" && (
-              <Dashboard rooms={rooms} visits={visits} />
+              <>
+                {session.role !== "executor" && <WorkOverview key={session.token} token={session.token} revision={osRevision} onExpired={expireSession} onOpen={() => setPage("working")} />}
+                <Dashboard rooms={rooms} visits={visits} />
+              </>
             )}{" "}
             {page === "locations" && <RoomList rooms={rooms} />}{" "}
             {page === "field" && (

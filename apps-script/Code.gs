@@ -31,11 +31,13 @@ function doPost(e) {
     // ADITIVO (rodada OS operacional): novas ações só de ledger de OS,
     // isoladas por projeto — nunca tocam login_/session_/hash_/safeEqual_.
     var OS_OPERACIONAL_ACOES = ['listOsProjects','listOsMembers','listOsOperacional','detailOsOperacional','createOsOperacional','assignOsOperacional','advanceOsOperacional','reopenOsOperacional'];
-    if (['login','logout','listRooms','listVisits','listWorkOrders','enter','exit'].concat(OS_OPERACIONAL_ACOES).indexOf(p.action) < 0) fail_('Operação não reconhecida.');
+    if (['login','logout','listRooms','listVisits','listWorkOrders','enter','exit','quemTrabalhaHoje'].concat(OS_OPERACIONAL_ACOES).indexOf(p.action) < 0) fail_('Operação não reconhecida.');
     if (p.action === 'login') return jsonResponse_({ok:true, session:login_(p.username,p.password)});
     // Logout remains possible even after the user is disabled or their role changes.
     if (p.action === 'logout') { CacheService.getScriptCache().remove('token_' + requireToken_(p.token)); return jsonResponse_({ok:true}); }
     var user = session_(p.token);
+    // Somente leitura: ponto do dia no QuickBooks Time, apenas gestor/diretor.
+    if (p.action === 'quemTrabalhaHoje') return jsonResponse_({ok:true,hoje:quemTrabalhaHoje_(user,p.periodo)});
     if (p.action === 'listOsProjects') return jsonResponse_({ok:true,projects:projetosOS_(user)});
     if (p.action === 'listOsMembers') return jsonResponse_({ok:true,members:membrosOS_(user,p.projetoId)});
     if (p.action === 'listWorkOrders') {
@@ -675,4 +677,112 @@ function setupOsOperacional() {
     if (sh.getLastRow() === 0) sh.appendRow(specs[n]);
     sh.setFrozenRows(1);
   });
+}
+
+// =============================================================================
+// QUEM ESTÁ TRABALHANDO HOJE — leitura do QuickBooks Time (somente leitura).
+// O token fica APENAS em Script Properties (QBTIME_ACCESS_TOKEN), nunca no
+// repositório nem no navegador. Somente gestor/diretor recebem nomes e horários.
+// Ver docs/quickbooks-time-setup.md.
+// =============================================================================
+var QBT_API_BASE = 'https://rest.tsheets.com/api/v1/';
+var QBT_TIMEZONE = 'America/New_York';
+var QBT_CACHE_SECONDS = 60;
+function qbtGet_(path, params) {
+  var token = PropertiesService.getScriptProperties().getProperty('QBTIME_ACCESS_TOKEN');
+  if (typeof token !== 'string' || !token.trim()) fail_('Conexão com o QuickBooks Time ainda não configurada.', 'QBT_NOT_CONFIGURED');
+  var query = Object.keys(params).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+  var res;
+  try {
+    res = UrlFetchApp.fetch(QBT_API_BASE + path + '?' + query, {method:'get', headers:{Authorization:'Bearer ' + token.trim()}, muteHttpExceptions:true});
+  } catch (_) { fail_('QuickBooks Time indisponível no momento. Tente atualizar.', 'QBT_UNAVAILABLE'); }
+  var code = res.getResponseCode();
+  if (code === 401 || code === 403) fail_('O acesso ao QuickBooks Time expirou ou foi revogado. Gere um novo token.', 'QBT_UNAUTHORIZED');
+  if (code !== 200) fail_('QuickBooks Time indisponível no momento. Tente atualizar.', 'QBT_UNAVAILABLE');
+  try { return JSON.parse(res.getContentText()); } catch (_) { fail_('Resposta inválida do QuickBooks Time.', 'QBT_UNAVAILABLE'); }
+}
+/** Lê todas as páginas (limite de segurança: 10 páginas de 200). */
+function qbtAll_(path, params, key) {
+  var items = {}, supplemental = {users:{}, jobcodes:{}};
+  for (var page = 1; page <= 10; page++) {
+    var q = {}; Object.keys(params).forEach(function(k) { q[k] = params[k]; });
+    q.limit = 200; q.page = page;
+    var body = qbtGet_(path, q);
+    var found = body && body.results && body.results[key];
+    if (found && typeof found === 'object') Object.keys(found).forEach(function(id) { items[id] = found[id]; });
+    var sup = body && body.supplemental_data;
+    if (sup && sup.users) Object.keys(sup.users).forEach(function(id) { supplemental.users[id] = sup.users[id]; });
+    if (sup && sup.jobcodes) Object.keys(sup.jobcodes).forEach(function(id) { supplemental.jobcodes[id] = sup.jobcodes[id]; });
+    if (!body || body.more !== true) break;
+  }
+  return {items:items, supplemental:supplemental};
+}
+function qbtNome_(u) {
+  if (!u) return 'Pessoa não identificada';
+  var n = [u.first_name, u.last_name].filter(function(x) { return typeof x === 'string' && x.trim(); }).join(' ').trim();
+  return n || 'Pessoa não identificada';
+}
+function qbtObra_(jobcodes, id) {
+  var j = jobcodes[String(id)];
+  if (!j || typeof j.name !== 'string') return '';
+  var parent = j.parent_id && jobcodes[String(j.parent_id)];
+  return parent && typeof parent.name === 'string' ? parent.name + ' › ' + j.name : j.name;
+}
+var QBT_PERIODOS = ['hoje','semana','mes'];
+/** Início do período no fuso da operação: hoje, segunda-feira desta semana ou dia 1 do mês. */
+function qbtInicio_(hoje, periodo) {
+  if (periodo === 'mes') return hoje.slice(0, 8) + '01';
+  if (periodo !== 'semana') return hoje;
+  var d = new Date(hoje + 'T12:00:00Z'), back = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+function qbtCliente_(jobcodes, id) {
+  var j = jobcodes[String(id)], guard = 0;
+  while (j && j.parent_id && jobcodes[String(j.parent_id)] && guard++ < 10) j = jobcodes[String(j.parent_id)];
+  return j && typeof j.name === 'string' && j.name.trim() ? j.name : 'Sem cliente informado';
+}
+function qbtTotais_(map, key) {
+  return Object.keys(map).map(function(k) { var o = {}; o[key] = k; o.horas = Math.round(map[k] / 36) / 100; return o; })
+    .filter(function(o) { return o.horas > 0; })
+    .sort(function(a, b) { return b.horas - a.horas; });
+}
+function quemTrabalhaHoje_(user, periodo) {
+  if (user.Perfil !== 'gestor' && user.Perfil !== 'diretor') fail_('Perfil sem permissão para esta operação.', 'FORBIDDEN');
+  periodo = periodo === undefined ? 'hoje' : periodo;
+  if (QBT_PERIODOS.indexOf(periodo) < 0) fail_('Período inválido.');
+  var cache = CacheService.getScriptCache(), cached = cache.get('qbt_' + periodo);
+  if (cached) { try { return JSON.parse(cached); } catch (_) { /* consulta de novo */ } }
+  var agora = Date.now();
+  var hoje = Utilities.formatDate(new Date(agora), QBT_TIMEZONE, 'yyyy-MM-dd');
+  var inicio = qbtInicio_(hoje, periodo);
+  var ts = qbtAll_('timesheets', {start_date:inicio, end_date:hoje, on_the_clock:'both', supplemental_data:'yes'}, 'timesheets');
+  var us = qbtAll_('users', {active:'yes', supplemental_data:'no'}, 'users');
+  var users = us.items, jobcodes = ts.supplemental.jobcodes;
+  Object.keys(ts.supplemental.users).forEach(function(id) { if (!users[id]) users[id] = ts.supplemental.users[id]; });
+  var trabalhando = [], encerrados = [], comPonto = {}, porCliente = {}, porPessoa = {};
+  Object.keys(ts.items).forEach(function(id) {
+    var t = ts.items[id];
+    if (!t || typeof t.date !== 'string' || t.date < inicio || t.date > hoje) return;
+    var segundos = Number(t.duration) > 0 ? Number(t.duration) : 0;
+    if (t.on_the_clock === true && typeof t.start === 'string' && Number.isFinite(Date.parse(t.start))) segundos = Math.max(0, (agora - Date.parse(t.start)) / 1000);
+    var nome = qbtNome_(users[String(t.user_id)]), cliente = qbtCliente_(jobcodes, t.jobcode_id);
+    porCliente[cliente] = (porCliente[cliente] || 0) + segundos;
+    porPessoa[nome] = (porPessoa[nome] || 0) + segundos;
+    if (t.date !== hoje) return;
+    comPonto[String(t.user_id)] = true;
+    var item = {pessoa:qbtNome_(users[String(t.user_id)]), obra:qbtObra_(jobcodes, t.jobcode_id), entrada:typeof t.start === 'string' ? t.start : ''};
+    if (t.on_the_clock === true) trabalhando.push(item);
+    else { item.saida = typeof t.end === 'string' ? t.end : ''; item.duracaoSegundos = Number(t.duration) > 0 ? Math.round(Number(t.duration)) : 0; encerrados.push(item); }
+  });
+  var semPonto = Object.keys(us.items).filter(function(id) { return !comPonto[id]; })
+    .map(function(id) { return {pessoa:qbtNome_(us.items[id])}; });
+  var porEntrada = function(a, b) { return a.entrada < b.entrada ? -1 : a.entrada > b.entrada ? 1 : 0; };
+  trabalhando.sort(porEntrada); encerrados.sort(porEntrada);
+  semPonto.sort(function(a, b) { return a.pessoa.localeCompare(b.pessoa); });
+  var result = {data:hoje, consultadoEm:new Date(agora).toISOString(), fonte:'QuickBooks Time', periodo:periodo, inicio:inicio, fim:hoje,
+    trabalhando:trabalhando, encerrados:encerrados, semPonto:semPonto,
+    horasPorCliente:qbtTotais_(porCliente, 'cliente'), horasPorPessoa:qbtTotais_(porPessoa, 'pessoa')};
+  cache.put('qbt_' + periodo, JSON.stringify(result), QBT_CACHE_SECONDS);
+  return result;
 }

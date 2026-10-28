@@ -3,7 +3,7 @@ const sources = [
   ['Equipes', 'Não integrado', 'Contas ativas e responsáveis de OS são pessoas autorizadas; falta cadastro de equipes e vínculos.'],
   ['Serviços', 'Não integrado', 'As atividades de campo não substituem um catálogo de serviços versionado.'],
   ['Calendário', 'Não integrado', 'A etapa Programada não informa data ou duração. As OS sem agendamento permanecem sem data.'],
-  ['Financeiro e horas externas', 'Fonte separada', 'Gestão à Vista usa outra fonte. Importações JSON não representam integração QuickBooks Time.'],
+  ['Financeiro e horas externas', 'Fonte separada', 'Gestão à Vista usa outra fonte. O ponto do dia (Quem está trabalhando) lê o QuickBooks Time diretamente, só leitura.'],
   ['Ferramentas', 'Não integrado', 'Categoria de custo não representa estoque, retirada, devolução ou custódia.'],
 ];
 export default function ModuleIntegrationStatus() {

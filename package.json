@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/backend.test.cjs tests/os-ledger.test.cjs tests/os-independent.test.cjs tests/frontend.test.cjs && vitest run",
+    "test": "node --test tests/backend.test.cjs tests/os-ledger.test.cjs tests/os-independent.test.cjs tests/frontend.test.cjs tests/qbtime.test.cjs && vitest run",
     "test:foundation": "node --test tests/backend.test.cjs",
     "test:legacy": "vitest run",
     "test:os-ledger": "node --test tests/os-ledger.test.cjs",
